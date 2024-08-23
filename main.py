@@ -1,8 +1,11 @@
 import base64
 import os.path
-from datetime import datetime
+from datetime import datetime, timezone
+from multiprocessing.synchronize import Event
 from pathlib import Path
 import textwrap
+import threading
+from threading import Thread
 
 from github import Github, BadCredentialsException, UnknownObjectException, GithubException
 from requests.exceptions import ConnectionError
@@ -16,18 +19,9 @@ DOWNLOADED_DIRECTORY_PATH = CURRENT_FILE_PATH / 'downloaded'
 git = Github()
 
 
-def get_last_commit_date(repo_url, file_path) -> datetime:
-    owner, repo_name = repo_url.split('/')[-2:]
-
-    repo = git.get_repo(owner + '/' + repo_name)
-    commits = repo.get_commits(path=file_path)
-
-    return commits[0].commit.committer.date
-
-
 def download_file(owner_name, repo_name, branch, path) -> None:
     try:
-        repo = git.get_repo(owner_name + '/' + repo_name)
+        repo = git.get_repo(f"{owner_name}/{repo_name}")
         content_encoded = repo.get_contents(path, ref=branch).content
     except (UnknownObjectException, GithubException):
         print('Invalid data was passed.')
@@ -46,23 +40,39 @@ def download_file(owner_name, repo_name, branch, path) -> None:
     print(f'File "{path}" was downloaded and updated.')
 
 
-def check_download(file_path) -> None:
-    commit_date = get_last_commit_date('https://github.com/a2x/cs2-dumper', 'output/offsets.cs')
-    date_updated = None
+def check_download(owner_name, repo_name, branch, path) -> bool:
+    try:
+        repo = git.get_repo(f"{owner_name}/{repo_name}")
+        commits = repo.get_commits(path=path, sha=branch)
 
-    if os.path.exists(file_path):
-        date_updated = datetime.fromtimestamp(os.path.getmtime(file_path))
+        latest_commit = commits[0]
+        name = path.split('/')[-1]
+        file = DOWNLOADED_DIRECTORY_PATH / name
 
-    if date_updated is None or date_updated < commit_date:
-        download_file()
+        if not file.exists():
+            return True
+
+        commit_date = latest_commit.commit.author.date
+    except (UnknownObjectException, GithubException):
+        print('Invalid data was passed.')
+        return False
+    except ConnectionError:
+        print('No connection with Github. Please check your network connection or try again later.')
+        return False
+
+    creation_time = os.path.getctime(file)
+    creation_date = datetime.fromtimestamp(creation_time, tz=timezone.utc)
+
+    return commit_date > creation_date
 
 
 def authenticate_token() -> None:
-    print('''Read about personal access token here and generate it to start use this application.
-Link: https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens#creating-a-personal-access-token-classic''')
+    print('Read about personal access token here and generate it to start use this application.\n'
+          'Link: https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens#creating-a-personal-access-token-classic')
     token = input('Enter your secure token: ')
 
     try:
+        global git
         git = Github(token)
         print('Authentication is successful.')
     except BadCredentialsException:
@@ -91,6 +101,7 @@ def read_tracked_files() -> list:
 def show_tracked_files() -> None:
     try:
         files = read_tracked_files()
+
         if len(files) == 0:
             raise FileNotFoundError
         files.insert(0, ('Owner name', 'Repository name', 'Branch name', 'File path'))
@@ -103,22 +114,22 @@ def show_tracked_files() -> None:
     max_path_len = max(len(line[2]) for line in files)
     max_branch_len = max(len(line[3]) for line in files)
 
-    for line in files:
-        print(
-            f'{line[0]:<{max_owner_len}} {line[1]:<{max_repo_len}} {line[2]:<{max_path_len}} {line[3]:<{max_branch_len}}')
+    [print(
+        f'{line[0]:<{max_owner_len}} {line[1]:<{max_repo_len}} {line[2]:<{max_path_len}} {line[3]:<{max_branch_len}}')
+        for line in files]
 
 
 def update_all_tracked_files() -> None:
     try:
         files = read_tracked_files()
+
         if len(files) == 0:
             raise FileNotFoundError
     except FileNotFoundError:
         print('No files are currently being tracked.')
         return
 
-    for file in files:
-        download_file(file[0], file[1], file[2], file[3])
+    [download_file(file[0], file[1], file[2], file[3]) for file in files]
 
 
 def ask_user_for_data() -> tuple[str, str, str, str] | None:
@@ -135,7 +146,7 @@ def ask_user_for_data() -> tuple[str, str, str, str] | None:
         repo_name = input('Enter a name of repository: ')
 
         try:
-            repo = git.get_repo(owner_name + '/' + repo_name)
+            repo = git.get_repo(f"{owner_name}/{repo_name}")
         except UnknownObjectException:
             print(f'The repository "{repo_name}" does not exist.')
             add_tracked_file()
@@ -158,6 +169,8 @@ def ask_user_for_data() -> tuple[str, str, str, str] | None:
             print(f'The file "{path}" does not exist in the branch "{branch}".')
             add_tracked_file()
             return
+
+        download_file(owner_name, repo_name, branch, path)
     except ConnectionError:
         print('No connection with Github. Please check your network connection or try again later.')
         return
@@ -174,11 +187,8 @@ def ask_user_for_raw_data() -> tuple[str, str, str, str]:
 
 def delete_tracked_file() -> None:
     print('Deleting a file.')
+
     owner_name, repo_name, branch, path = ask_user_for_raw_data()
-    # owner_name = 'a2x'
-    # repo_name = 'cs2-dumper'
-    # branch = 'main'
-    # path = '/src/main.rs'
     line_to_delete = f'{owner_name} {repo_name} {branch} {path}'
 
     try:
@@ -205,6 +215,7 @@ def delete_tracked_file() -> None:
 
 def update_tracked_file() -> None:
     print('Updating a file.')
+
     owner_name, repo_name, branch, path = ask_user_for_raw_data()
     download_file(owner_name, repo_name, branch, path)
 
@@ -228,11 +239,25 @@ def delete_all_tracked_files() -> None:
         print('No files were being tracked.')
 
 
-def start_thread() -> None:
-    pass
+def start_thread() -> tuple[Event, Thread]:
+    stop_event = threading.Event()
+    thread = threading.Thread(target=auto_update_files, args=(stop_event,))
+    thread.start()
+    return stop_event, thread
 
 
-def manual():
+def auto_update_files(stop_event) -> None:
+    while not stop_event.is_set():
+        for file in read_tracked_files():
+            if check_download(file[0], file[1], file[2], file[3]):
+                download_file(file[0], file[1], file[2], file[3])
+                # print(f'"{file[3]}" was updated')
+            # else:
+            #     print(f'"{file[3]}" was not updated')
+        stop_event.wait(15)
+
+
+def manual() -> None:
     print('''
     Q: How to generate an access token?
     A: Link: https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens#creating-a-personal-access-token-classic
@@ -247,15 +272,6 @@ def manual():
 
 
 def main_menu() -> None:
-    print('Github downloader v1.0 by revel111.')
-    if not AUTH_FILE_PATH.exists():
-        authenticate_token()
-    else:
-        try:
-            git = Github(read_credentials())
-        except BadCredentialsException:
-            authenticate_token()
-
     while True:
         print('===============================================\n'
               'You are logged in as ' + git.get_user().login)
@@ -289,20 +305,31 @@ def main_menu() -> None:
             case '10':
                 manual()
             case '0':
-                break
+                raise KeyboardInterrupt
             case _:
                 print('Wrong input.')
-    print('Thank you for using this application.')
+
+
+def main() -> None:
+    print('Github downloader v1.0 by revel111.')
+
+    if not AUTH_FILE_PATH.exists():
+        authenticate_token()
+    else:
+        try:
+            global git
+            git = Github(read_credentials())
+        except BadCredentialsException:
+            authenticate_token()
+
+    stop_event, thread = start_thread()
+    try:
+        main_menu()
+    except KeyboardInterrupt:
+        stop_event.set()
+        thread.join()
+        print('Thank you for using this application.')
 
 
 if __name__ == '__main__':
-    # commit_date = get_last_commit_date('https://github.com/a2x/cs2-dumper', 'output/offsets.cs')
-    main_menu()
-    # delete_tracked_file()
-    # git = Github(read_credentials())
-    # download_file('a2x', 'cs2-dumper', 'main', '/src/main.rs')
-    # update_all_tracked_files()
-    # owner_name = 'a2x'
-    # repo_name = 'cs2-dumper'
-    # branch = 'main'
-    # path = '/src/main.rs'
+    main()
