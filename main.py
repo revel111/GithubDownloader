@@ -1,15 +1,16 @@
 import base64
 import os.path
+import re
+import textwrap
+import threading
 from datetime import datetime, timezone
 from multiprocessing.synchronize import Event
 from pathlib import Path
-import textwrap
-import threading
 from threading import Thread
-import re
 
 from github import Github, BadCredentialsException, UnknownObjectException, GithubException
 from requests.exceptions import ConnectionError
+from tabulate import tabulate
 
 CURRENT_FILE_PATH = Path(__file__).parent.resolve()
 AUTH_DIRECTORY_PATH = CURRENT_FILE_PATH / 'auth'
@@ -96,36 +97,30 @@ def read_credentials() -> str:
 
 def read_tracked_files() -> list:
     with open(FILES_FILE_PATH, 'r') as file:
-        return [line.split() for line in file]
+        files = [line.split() for line in file]
+
+    if not files:
+        raise FileNotFoundError
+
+    return files
 
 
-def show_tracked_files() -> None:
+def show_and_return_tracked_files() -> list | None:
     try:
         files = read_tracked_files()
-
-        if len(files) == 0:
-            raise FileNotFoundError
-        files.insert(0, ('Owner name', 'Repository name', 'Branch name', 'File path'))
     except FileNotFoundError:
         print('No files are currently being tracked.')
-        return
+        return None
 
-    max_owner_len = max(len(line[0]) for line in files)
-    max_repo_len = max(len(line[1]) for line in files)
-    max_path_len = max(len(line[2]) for line in files)
-    max_branch_len = max(len(line[3]) for line in files)
+    print(tabulate(files,
+                   headers=['№', 'Owner name', 'Repository name', 'Branch name', 'File path'], showindex="always"))
 
-    [print(
-        f'{line[0]:<{max_owner_len}} {line[1]:<{max_repo_len}} {line[2]:<{max_path_len}} {line[3]:<{max_branch_len}}')
-        for line in files]
+    return files
 
 
 def update_all_tracked_files() -> None:
     try:
         files = read_tracked_files()
-
-        if len(files) == 0:
-            raise FileNotFoundError
     except FileNotFoundError:
         print('No files are currently being tracked.')
         return
@@ -192,15 +187,15 @@ def parse_link() -> tuple[str, str, str, str]:
 
 
 def delete_tracked_file() -> None:
-    print('Deleting a file.')
-
-    try:
-        owner_name, repo_name, branch, path = parse_link()
-    except ValueError:
-        print('Wrong link format.')
+    files = show_and_return_tracked_files()
+    if not files:
         return
-
-    line_to_delete = f'{owner_name} {repo_name} {branch} {path}'
+    try:
+        ch = int(input('Type index of file you want to update: '))
+        line_to_delete = f'{files[ch][0]} {files[ch][1]} {files[ch][2]} {files[ch][3]}'
+    except (IndexError, ValueError):
+        print('Wrong input.')
+        return
 
     try:
         with open(FILES_FILE_PATH, 'r+') as file:
@@ -214,10 +209,10 @@ def delete_tracked_file() -> None:
                 if line.strip('\n') != line_to_delete:
                     file.write(line)
                 else:
-                    print(f'File "{path}" was deleted.')
+                    print(f'File "{files[ch][3]}" was deleted.')
                     break
             else:
-                print(f'File "{path}" does not exist.')
+                print(f'File "{files[ch][3]}" does not exist.')
 
             file.truncate()
     except FileNotFoundError:
@@ -225,15 +220,19 @@ def delete_tracked_file() -> None:
 
 
 def update_tracked_file() -> None:
-    print('Updating a file.')
+    files = show_and_return_tracked_files()
 
-    try:
-        owner_name, repo_name, branch, path = parse_link()
-    except ValueError:
-        print('Wrong link format.')
+    if not files:
         return
 
-    download_file(owner_name, repo_name, branch, path)
+    try:
+        ch = int(input('Type index of file you want to update: '))
+        if check_download(files[ch][0], files[ch][1], files[ch][2], files[ch][3]):
+            download_file(files[ch][0], files[ch][1], files[ch][2], files[ch][3])
+        else:
+            print(f'File "{files[ch][3]}" is up to date.')
+    except (IndexError, ValueError):
+        print('Wrong input.')
 
 
 def add_tracked_file() -> None:
@@ -282,7 +281,12 @@ def start_thread() -> tuple[Event, Thread]:
 
 def auto_update_files(stop_event) -> None:
     while not stop_event.is_set():
-        for file in read_tracked_files():
+        try:
+            files = read_tracked_files()
+        except FileNotFoundError:
+            continue
+
+        for file in files:
             if check_download(file[0], file[1], file[2], file[3]):
                 download_file(file[0], file[1], file[2], file[3])
                 # print(f'"{file[3]}" was updated')
@@ -311,9 +315,9 @@ def main_menu() -> None:
             Type 2 to show all tracked files.
             Type 3 to add a new tracked file and download it.
             Type 4 to immediately update all tracked files.
-            Type 5 to update a specific tracked file. #TODO
+            Type 5 to update a specific tracked file.
             Type 6 to download a file.
-            Type 7 to delete a tracked file. #TODO
+            Type 7 to delete a tracked file.
             Type 8 to delete all tracked files.
             Type 10 to see the manual (help).
             Type 0 to exit.
@@ -325,7 +329,7 @@ def main_menu() -> None:
             case '1':
                 authenticate_token()
             case '2':
-                show_tracked_files()
+                show_and_return_tracked_files()
             case '3':
                 add_tracked_file()
             case '4':
