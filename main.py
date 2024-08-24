@@ -6,6 +6,7 @@ from pathlib import Path
 import textwrap
 import threading
 from threading import Thread
+import re
 
 from github import Github, BadCredentialsException, UnknownObjectException, GithubException
 from requests.exceptions import ConnectionError
@@ -37,7 +38,7 @@ def download_file(owner_name, repo_name, branch, path) -> None:
     with open(DOWNLOADED_DIRECTORY_PATH / name, 'w') as file:
         file.write(content)
 
-    print(f'File "{path}" was downloaded and updated.')
+    print(f'File "{path}" was downloaded.')
 
 
 def check_download(owner_name, repo_name, branch, path) -> bool:
@@ -129,48 +130,44 @@ def update_all_tracked_files() -> None:
         print('No files are currently being tracked.')
         return
 
-    [download_file(file[0], file[1], file[2], file[3]) for file in files]
+    for file in files:
+        if check_download(file[0], file[1], file[2], file[3]):
+            download_file(file[0], file[1], file[2], file[3])
+        else:
+            print(f'File "{file[3]}" is up to date.')
 
 
 def ask_user_for_data() -> tuple[str, str, str, str] | None:
-    owner_name = input('Enter a name of owner: ')
+    try:
+        owner_name, repo_name, branch, path = parse_link()
+    except ValueError:
+        print('Wrong link format.')
+        return
 
     try:
         try:
             git.get_user(owner_name)
         except UnknownObjectException:
             print(f'The user "{owner_name}" does not exist.')
-            add_tracked_file()
             return
-
-        repo_name = input('Enter a name of repository: ')
 
         try:
             repo = git.get_repo(f"{owner_name}/{repo_name}")
         except UnknownObjectException:
             print(f'The repository "{repo_name}" does not exist.')
-            add_tracked_file()
             return
-
-        branch = input('Enter a branch of the project: ')
 
         try:
             repo.get_branch(branch)
         except GithubException:
-            print(f'The branch "{branch}" does not exist in the repository.')
-            add_tracked_file()
+            print(f'The branch "{branch}" does not exist in the repository "{repo_name}".')
             return
-
-        path = input('Enter a path to the file: ')
 
         try:
             repo.get_contents(path, ref=branch)
         except UnknownObjectException:
             print(f'The file "{path}" does not exist in the branch "{branch}".')
-            add_tracked_file()
             return
-
-        download_file(owner_name, repo_name, branch, path)
     except ConnectionError:
         print('No connection with Github. Please check your network connection or try again later.')
         return
@@ -178,17 +175,31 @@ def ask_user_for_data() -> tuple[str, str, str, str] | None:
     return owner_name, repo_name, branch, path
 
 
-def ask_user_for_raw_data() -> tuple[str, str, str, str]:
-    return (input('Enter a name of owner: '),
-            input('Enter a name of repository: '),
-            input('Enter a branch of the project: '),
-            input('Enter a path to the file: '))
+def parse_link() -> tuple[str, str, str, str]:
+    link_split = input('Enter a link to the file: ')
+    pattern = r"https://github\.com/(?P<owner_name>[^/]+)/(?P<repo_name>[^/]+)/blob/(?P<branch>[^/]+)/(?P<path>.+)"
+    match = re.match(pattern, link_split)
+
+    if match:
+        return (
+            match.group('owner_name'),
+            match.group('repo_name'),
+            match.group('branch'),
+            match.group('path')
+        )
+    else:
+        raise ValueError
 
 
 def delete_tracked_file() -> None:
     print('Deleting a file.')
 
-    owner_name, repo_name, branch, path = ask_user_for_raw_data()
+    try:
+        owner_name, repo_name, branch, path = parse_link()
+    except ValueError:
+        print('Wrong link format.')
+        return
+
     line_to_delete = f'{owner_name} {repo_name} {branch} {path}'
 
     try:
@@ -203,10 +214,10 @@ def delete_tracked_file() -> None:
                 if line.strip('\n') != line_to_delete:
                     file.write(line)
                 else:
-                    print(f'File {path} was deleted.')
+                    print(f'File "{path}" was deleted.')
                     break
             else:
-                print(f'File {path} does not exist.')
+                print(f'File "{path}" does not exist.')
 
             file.truncate()
     except FileNotFoundError:
@@ -216,19 +227,42 @@ def delete_tracked_file() -> None:
 def update_tracked_file() -> None:
     print('Updating a file.')
 
-    owner_name, repo_name, branch, path = ask_user_for_raw_data()
+    try:
+        owner_name, repo_name, branch, path = parse_link()
+    except ValueError:
+        print('Wrong link format.')
+        return
+
     download_file(owner_name, repo_name, branch, path)
 
 
 def add_tracked_file() -> None:
     print('Adding a file.')
-    owner_name, repo_name, branch, path = ask_user_for_data()
+
+    try:
+        owner_name, repo_name, branch, path = ask_user_for_data()
+    except TypeError:
+        return
+
+    download_file(owner_name, repo_name, branch, path)
 
     FILES_DIRECTORY_PATH.mkdir(exist_ok=True)
     with open(FILES_FILE_PATH, 'a') as file:
         file.write(f'{owner_name} {repo_name} {branch} {path}\n')
 
     print(f'File "{path}" was successfully added to the list of tracked files.')
+
+
+def download_file_without_tracking() -> None:
+    try:
+        owner_name, repo_name, branch, path = ask_user_for_data()
+    except TypeError:
+        return
+
+    if check_download(owner_name, repo_name, branch, path):
+        download_file(owner_name, repo_name, branch, path)
+    else:
+        print(f'File "{path}" is up to date.')
 
 
 def delete_all_tracked_files() -> None:
@@ -258,35 +292,35 @@ def auto_update_files(stop_event) -> None:
 
 
 def manual() -> None:
-    print('''
+    print(textwrap.dedent('''
     Q: How to generate an access token?
     A: Link: https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens#creating-a-personal-access-token-classic
-    
-    Q: How to exit to the main menu(e.g. when being in the menu with adding a new file)?
-    A: Press 'Esc'.
     
     Q: Where can I report about bugs and send any idea regarding this project?
     A: Link: https://github.com/revel111/GithubDownloader/issues 
     I ask you to report any kind of bugs. Each bug will be fixed and any idea will be reviewed.
-    ''')
+    '''))
 
 
 def main_menu() -> None:
     while True:
         print('===============================================\n'
               'You are logged in as ' + git.get_user().login)
-        ch = input(textwrap.dedent('''
+        print(textwrap.dedent('''
             Type 1 if you want to change credentials.
             Type 2 to show all tracked files.
-            Type 3 to add a new tracked file.
+            Type 3 to add a new tracked file and download it.
             Type 4 to immediately update all tracked files.
-            Type 5 to update a specific tracked file.
-            Type 6 to delete a tracked file.
-            Type 7 to delete all tracked files.
+            Type 5 to update a specific tracked file. #TODO
+            Type 6 to download a file.
+            Type 7 to delete a tracked file. #TODO
+            Type 8 to delete all tracked files.
             Type 10 to see the manual (help).
             Type 0 to exit.
         '''))
+        ch = input('Type: ')
         print('===============================================')
+
         match ch:
             case '1':
                 authenticate_token()
@@ -299,8 +333,10 @@ def main_menu() -> None:
             case '5':
                 update_tracked_file()
             case '6':
-                delete_tracked_file()
+                download_file_without_tracking()
             case '7':
+                delete_tracked_file()
+            case '8':
                 delete_all_tracked_files()
             case '10':
                 manual()
