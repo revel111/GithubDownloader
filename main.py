@@ -18,6 +18,7 @@ AUTH_FILE_PATH = AUTH_DIRECTORY_PATH / 'credentials.txt'
 FILES_DIRECTORY_PATH = CURRENT_FILE_PATH / 'data'
 FILES_FILE_PATH = FILES_DIRECTORY_PATH / 'files.txt'
 DOWNLOADED_DIRECTORY_PATH = CURRENT_FILE_PATH / 'downloaded'
+LOG_PATH = CURRENT_FILE_PATH / 'log.txt'
 git = Github()
 
 
@@ -40,6 +41,11 @@ def download_file(owner_name, repo_name, branch, path) -> None:
         file.write(content)
 
     print(f'File "{path}" was downloaded.')
+
+
+def log(message) -> None:
+    with open(LOG_PATH, 'a') as file:
+        file.write(f'{datetime.now()} {message}' + '\n')
 
 
 def check_download(owner_name, repo_name, branch, path) -> bool:
@@ -274,25 +280,27 @@ def delete_all_tracked_files() -> None:
 
 def start_thread() -> tuple[Event, Thread]:
     stop_event = threading.Event()
+    # thread = threading.Thread(target=auto_update_files, args=(stop_event,))
     thread = threading.Thread(target=auto_update_files, args=(stop_event,))
     thread.start()
     return stop_event, thread
 
 
-def auto_update_files(stop_event) -> None:
-    while not stop_event.is_set():
-        try:
-            files = read_tracked_files()
-        except FileNotFoundError:
-            continue
+# def auto_update_files(stop_event) -> None:
+def auto_update_files() -> None:
+    # while not stop_event.is_set():
+    try:
+        files = read_tracked_files()
+    except FileNotFoundError:
+        return
 
-        for file in files:
-            if check_download(file[0], file[1], file[2], file[3]):
-                download_file(file[0], file[1], file[2], file[3])
-                # print(f'"{file[3]}" was updated')
-            # else:
-            #     print(f'"{file[3]}" was not updated')
-        stop_event.wait(15)
+    for file in files:
+        if check_download(file[0], file[1], file[2], file[3]):
+            download_file(file[0], file[1], file[2], file[3])
+            print(f'"{file[3]}" was updated')
+        else:
+            print(f'"{file[3]}" was not updated')
+    # stop_event.wait(15)
 
 
 def manual() -> None:
@@ -362,12 +370,12 @@ def main() -> None:
         except BadCredentialsException:
             authenticate_token()
 
-    stop_event, thread = start_thread()
+    # stop_event, thread = start_thread()
     try:
         main_menu()
     except KeyboardInterrupt:
-        stop_event.set()
-        thread.join()
+        # stop_event.set()
+        # thread.join()
         print('Thank you for using this application.')
 
 
