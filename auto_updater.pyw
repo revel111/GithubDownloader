@@ -9,9 +9,13 @@ git = Github()
 
 def run() -> None:
     while True:
-        auto_update_files()
-        log('Updating files')
-        time.sleep(15)
+        try:
+            auto_update_files()
+            log('Files were updated.')
+        except ConnectionError:
+            log('No connection with Github.')
+        time.sleep(900)  # 15 minutes
+        # time.sleep(15)
 
 
 def check_run() -> bool:
@@ -21,8 +25,11 @@ def check_run() -> bool:
     try:
         global git
         git = Github(read_credentials())
-        print(git.get_user().login)
     except BadCredentialsException:
+        log('Invalid token was passed.')
+        return False
+    except ConnectionError:
+        log('No connection with Github.')
         return False
 
     return True
@@ -35,7 +42,5 @@ if __name__ == '__main__':
             run()
         else:
             log(f'Unable to login.')
-    except ConnectionError:
-        log('No connection with Github. Please check your network connection or try again later.')
     except KeyboardInterrupt:
         pass

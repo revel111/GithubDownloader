@@ -177,9 +177,9 @@ def ask_user_for_data() -> tuple[str, str, str, str] | None:
 
 
 def parse_link() -> tuple[str, str, str, str]:
-    link_split = input('Enter a link to the file: ')
+    link = input('Enter a link to the file: ')
     pattern = r"https://github\.com/(?P<owner_name>[^/]+)/(?P<repo_name>[^/]+)/blob/(?P<branch>[^/]+)/(?P<path>.+)"
-    match = re.match(pattern, link_split)
+    match = re.match(pattern, link)
 
     if match:
         return (
@@ -192,19 +192,33 @@ def parse_link() -> tuple[str, str, str, str]:
         raise ValueError
 
 
-def delete_tracked_file() -> None:
+def delete_tracked_file_by_index() -> None:
     files = show_and_return_tracked_files()
+
     if not files:
         return
     try:
         ch = int(input('Type index of file you want to update: '))
-        line_to_delete = f'{files[ch][0]} {files[ch][1]} {files[ch][2]} {files[ch][3]}'
+        delete_tracked_file(f'{files[ch][0]} {files[ch][1]} {files[ch][2]} {files[ch][3]}', files[ch][3])
     except (IndexError, ValueError):
         print('Wrong input.')
         return
 
+
+def delete_tracked_file_by_link() -> None:
+    try:
+        owner_name, repo_name, branch, path = parse_link()
+    except ValueError:
+        print('Wrong input.')
+        return
+
+    delete_tracked_file(f'{owner_name} {repo_name} {branch} {path}', path.split('/')[-1])
+
+
+def delete_tracked_file(line_to_delete, name) -> None:
     try:
         with open(FILES_FILE_PATH, 'r+') as file:
+            flag = False
             lines = file.readlines()
             file.seek(0)
 
@@ -215,10 +229,12 @@ def delete_tracked_file() -> None:
                 if line.strip('\n') != line_to_delete:
                     file.write(line)
                 else:
-                    print(f'File "{files[ch][3]}" was deleted.')
-                    break
+                    flag = True
+
+            if flag:
+                print(f'File "{name}" was deleted.')
             else:
-                print(f'File "{files[ch][3]}" does not exist.')
+                print(f'File "{name}" does not exist.')
 
             file.truncate()
     except FileNotFoundError:
@@ -278,17 +294,7 @@ def delete_all_tracked_files() -> None:
         print('No files were being tracked.')
 
 
-def start_thread() -> tuple[Event, Thread]:
-    stop_event = threading.Event()
-    # thread = threading.Thread(target=auto_update_files, args=(stop_event,))
-    thread = threading.Thread(target=auto_update_files, args=(stop_event,))
-    thread.start()
-    return stop_event, thread
-
-
-# def auto_update_files(stop_event) -> None:
 def auto_update_files() -> None:
-    # while not stop_event.is_set():
     try:
         files = read_tracked_files()
     except FileNotFoundError:
@@ -300,7 +306,6 @@ def auto_update_files() -> None:
             print(f'"{file[3]}" was updated')
         else:
             print(f'"{file[3]}" was not updated')
-    # stop_event.wait(15)
 
 
 def manual() -> None:
@@ -316,7 +321,7 @@ def manual() -> None:
 
 def main_menu() -> None:
     while True:
-        print('===============================================\n'
+        print('=================================================\n'
               'You are logged in as ' + git.get_user().login)
         print(textwrap.dedent('''
             Type 1 if you want to change credentials.
@@ -326,12 +331,13 @@ def main_menu() -> None:
             Type 5 to update a specific tracked file.
             Type 6 to download a file.
             Type 7 to delete a tracked file.
-            Type 8 to delete all tracked files.
+            Type 8 to delete a tracked file by link.
+            Type 9 to delete all tracked files.
             Type 10 to see the manual (help).
             Type 0 to exit.
         '''))
         ch = input('Type: ')
-        print('===============================================')
+        print('=================================================')
 
         match ch:
             case '1':
@@ -347,8 +353,10 @@ def main_menu() -> None:
             case '6':
                 download_file_without_tracking()
             case '7':
-                delete_tracked_file()
+                delete_tracked_file_by_index()
             case '8':
+                delete_tracked_file_by_link()
+            case '9':
                 delete_all_tracked_files()
             case '10':
                 manual()
@@ -370,13 +378,12 @@ def main() -> None:
         except BadCredentialsException:
             authenticate_token()
 
-    # stop_event, thread = start_thread()
     try:
         main_menu()
     except KeyboardInterrupt:
-        # stop_event.set()
-        # thread.join()
         print('Thank you for using this application.')
+    except ConnectionError:
+        print('No connection with Github. Please check your network connection or try again later.')
 
 
 if __name__ == '__main__':
