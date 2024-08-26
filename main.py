@@ -2,11 +2,8 @@ import base64
 import os.path
 import re
 import textwrap
-import threading
 from datetime import datetime, timezone
-from multiprocessing.synchronize import Event
 from pathlib import Path
-from threading import Thread
 
 from github import Github, BadCredentialsException, UnknownObjectException, GithubException
 from requests.exceptions import ConnectionError
