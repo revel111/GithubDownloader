@@ -79,6 +79,7 @@ def authenticate_token() -> None:
     try:
         global git
         git = Github(token)
+        git.get_user().login
         print('Authentication is successful.')
     except BadCredentialsException:
         print('You entered invalid secure token. Try again.\n')
@@ -372,6 +373,7 @@ def main() -> None:
         try:
             global git
             git = Github(read_credentials())
+            git.get_user().login
         except BadCredentialsException:
             authenticate_token()
 

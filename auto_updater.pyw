@@ -25,6 +25,7 @@ def check_run() -> bool:
     try:
         global git
         git = Github(read_credentials())
+        git.get_user().login
     except BadCredentialsException:
         log('Invalid token was passed.')
         return False
