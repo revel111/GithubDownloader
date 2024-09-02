@@ -24,8 +24,8 @@ You can find them in the "downloaded" directory which is located in the director
 [PyGithub](https://pypi.org/project/PyGithub)\
 [tabulate](https://pypi.org/project/tabulate)
 
-## How to install?
-In the "installation" directory you can find two scripts: for Windows and for Linux respectively. These scripts download needed libraries and add "auto_updater.py" to the startup\
+## How to install and uninstall?
+In the "installation" directory you can find two scripts: for Windows and for Linux respectively. These scripts download needed libraries and add "auto_updater.py" to the startup. Uninstallation deletes script from the startup\
 **This app was tested on Windows 10 and Lubuntu 24.04.**
 
 ## Plans for improvement:
