@@ -10,9 +10,8 @@ from requests.exceptions import ConnectionError
 from tabulate import tabulate
 
 CURRENT_FILE_PATH = Path(__file__).parent.resolve()
-AUTH_DIRECTORY_PATH = CURRENT_FILE_PATH / 'auth'
-AUTH_FILE_PATH = AUTH_DIRECTORY_PATH / 'credentials.txt'
 FILES_DIRECTORY_PATH = CURRENT_FILE_PATH / 'data'
+AUTH_FILE_PATH = FILES_DIRECTORY_PATH / 'credentials.txt'
 FILES_FILE_PATH = FILES_DIRECTORY_PATH / 'files.txt'
 DOWNLOADED_DIRECTORY_PATH = CURRENT_FILE_PATH / 'downloaded'
 LOG_PATH = CURRENT_FILE_PATH / 'log.txt'
@@ -89,7 +88,7 @@ def authenticate_token() -> None:
         print('No connection with Github. Please check your network connection or try again later.')
         return
 
-    AUTH_DIRECTORY_PATH.mkdir(exist_ok=True)
+    FILES_DIRECTORY_PATH.mkdir(exist_ok=True)
     with open(AUTH_FILE_PATH, 'w') as file:
         file.write(token)
 
@@ -379,11 +378,12 @@ def main() -> None:
 
     try:
         main_menu()
-    except KeyboardInterrupt:
-        print('Thank you for using this application.')
     except ConnectionError:
         print('No connection with Github. Please check your network connection or try again later.')
 
 
 if __name__ == '__main__':
-    main()
+    try:
+        main()
+    except KeyboardInterrupt:
+        print('Thank you for using this application.')
