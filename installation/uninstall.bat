@@ -6,9 +6,9 @@ SET SHORTCUT_PATH=%STARTUP_FOLDER%\%SHORTCUT_NAME%
 
 IF EXIST "%SHORTCUT_PATH%" (
     DEL "%SHORTCUT_PATH%"
-    echo The shortcut has been removed from the startup.
+    echo The app has been removed from the startup.
 ) ELSE (
-    echo The shortcut was not found in the startup.
+    echo The app was not found in the startup.
 )
 
 pause

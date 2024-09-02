@@ -10,6 +10,6 @@ SET SHORTCUT_PATH=%STARTUP_FOLDER%\%SHORTCUT_NAME%
 
 powershell -command "$s=(New-Object -COM WScript.Shell).CreateShortcut('%SHORTCUT_PATH%'); $s.TargetPath='%SCRIPT_PATH%'; $s.Save()"
 
-echo Installation is complete.
+echo The installation is successful.
 
 pause
