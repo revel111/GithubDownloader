@@ -25,14 +25,14 @@ You can find them in the "downloaded" directory which is located in the director
 [tabulate](https://pypi.org/project/tabulate)
 
 ## How to install and uninstall?
-In the "installation" directory you can find two scripts: for Windows and for Linux respectively. These scripts download needed libraries and add "auto_updater.py" to the startup. Uninstallation deletes script from the startup\
+In the "installation" directory you can find two scripts: for Windows and for Linux respectively. These scripts download needed libraries and add "auto_updater.py" to the startup. Uninstallation deletes script from the startup.\
 **This app was tested on Windows 10 and Lubuntu 24.04.**
 
 ## Plans for improvement:
   - Possibility of custom frequence of file updating;
   - Possibility of tracking directory;
   - Manage duplicated files;
-  - Add possibility to provide path where user want to store file;
+  - Add possibility to provide path where user want to store file.
     
 ## Where to report problems and suggestions?
 You can create an issue [here](https://github.com/revel111/GithubDownloader/issues). I will try to respond you as soon as possible.
