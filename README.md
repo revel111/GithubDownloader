@@ -20,7 +20,7 @@ therefore, the authentication is needed.
 GitHub link should look like this: "https://github.com/revel111/GithubDownloader/blob/master/main.py".
 
 ## Where can I find downloaded files?
-You can find them in the "downloaded" directory which is located in the directory with scripts.
+You can find them in the "downloaded" directory which is located in the directory with scripts or in directory which you specified.
 
 ## How to use this application?
 **In the repository you can find two scripts:**
