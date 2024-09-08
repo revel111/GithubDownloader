@@ -17,7 +17,7 @@ GitHub has restricted number of requests per hour, and for an unauthorized user 
 therefore, the authentication is needed.
 
 ## How to add a file to be tracked?
-GitHub link should look like this: "https://github.com/revel111/GithubDownloader/blob/master/main.py" 
+GitHub link should look like this: "https://github.com/revel111/GithubDownloader/blob/master/main.py".
 
 ## Where can I find downloaded files?
 You can find them in the "downloaded" directory which is located in the directory with scripts.
