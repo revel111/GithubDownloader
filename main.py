@@ -18,7 +18,8 @@ LOG_PATH = CURRENT_FILE_PATH / 'log.txt'
 git = Github()
 
 
-def download_file(owner_name, repo_name, branch, path) -> None:
+def download_file(owner_name, repo_name, branch, path, location) -> None:
+    location = Path(location)
     try:
         repo = git.get_repo(f"{owner_name}/{repo_name}")
         content_encoded = repo.get_contents(path, ref=branch).content
@@ -33,10 +34,15 @@ def download_file(owner_name, repo_name, branch, path) -> None:
     name = path.split('/')[-1]
 
     DOWNLOADED_DIRECTORY_PATH.mkdir(exist_ok=True)
-    with open(DOWNLOADED_DIRECTORY_PATH / name, 'w') as file:
-        file.write(content)
 
-    print(f'File "{path}" was downloaded.')
+    if location.exists() and location.is_dir():
+        with open(location / name, 'w') as file:
+            file.write(content)
+        print(f'File "{path}" was downloaded into "{location}".')
+    else:
+        with open(DOWNLOADED_DIRECTORY_PATH / name, 'w') as file:
+            file.write(content)
+        print(f'Location "{location}" does not exist, file was was downloaded into "{DOWNLOADED_DIRECTORY_PATH}".')
 
 
 def log(message) -> None:
@@ -115,8 +121,8 @@ def show_and_return_tracked_files() -> list | None:
         print('No files are currently being tracked.')
         return None
 
-    print(tabulate(files,
-                   headers=['№', 'Owner name', 'Repository name', 'Branch name', 'File path'], showindex="always"))
+    print(tabulate(files, headers=['№', 'Owner name', 'Repository name', 'Branch name', 'File path', 'Stored'],
+                   showindex="always"))
 
     return files
 
@@ -130,12 +136,12 @@ def update_all_tracked_files() -> None:
 
     for file in files:
         if check_download(file[0], file[1], file[2], file[3]):
-            download_file(file[0], file[1], file[2], file[3])
+            download_file(file[0], file[1], file[2], file[3], file[4])
         else:
             print(f'File "{file[3]}" is up to date.')
 
 
-def ask_user_for_data() -> tuple[str, str, str, str] | None:
+def ask_user_for_data() -> tuple[str, str, str, str, Path] | None:
     try:
         owner_name, repo_name, branch, path = parse_link()
     except ValueError:
@@ -166,11 +172,18 @@ def ask_user_for_data() -> tuple[str, str, str, str] | None:
         except UnknownObjectException:
             print(f'The file "{path}" does not exist in the branch "{branch}".')
             return
+
+        location = Path(input('Enter a path where you want to store a file: '))
+        if not location.exists() or not location.is_dir():
+            print(
+                f'Location "{location}" does not exist. File will be stored in the "{DOWNLOADED_DIRECTORY_PATH}"')
+            location = DOWNLOADED_DIRECTORY_PATH
+
     except ConnectionError:
         print('No connection with Github. Please check your network connection or try again later.')
         return
 
-    return owner_name, repo_name, branch, path
+    return owner_name, repo_name, branch, path, location
 
 
 def parse_link() -> tuple[str, str, str, str]:
@@ -196,7 +209,7 @@ def delete_tracked_file_by_index() -> None:
         return
     try:
         ch = int(input('Type index of file you want to update: '))
-        delete_tracked_file(f'{files[ch][0]} {files[ch][1]} {files[ch][2]} {files[ch][3]}', files[ch][3])
+        delete_tracked_file(f'{files[ch][0]}{files[ch][1]}{files[ch][2]}{files[ch][3]}', files[ch][3])
     except (IndexError, ValueError):
         print('Wrong input.')
         return
@@ -209,7 +222,7 @@ def delete_tracked_file_by_link() -> None:
         print('Wrong input.')
         return
 
-    delete_tracked_file(f'{owner_name} {repo_name} {branch} {path}', path.split('/')[-1])
+    delete_tracked_file(f'{owner_name}{repo_name}{branch}{path}', path.split('/')[-1])
 
 
 def delete_tracked_file(line_to_delete, name) -> None:
@@ -223,7 +236,7 @@ def delete_tracked_file(line_to_delete, name) -> None:
                 raise FileNotFoundError
 
             for line in lines:
-                if line.strip('\n') != line_to_delete:
+                if ''.join(line.strip('\n').split(' ')[:-1]) != line_to_delete:
                     file.write(line)
                 else:
                     flag = True
@@ -247,7 +260,7 @@ def update_tracked_file() -> None:
     try:
         ch = int(input('Type index of file you want to update: '))
         if check_download(files[ch][0], files[ch][1], files[ch][2], files[ch][3]):
-            download_file(files[ch][0], files[ch][1], files[ch][2], files[ch][3])
+            download_file(files[ch][0], files[ch][1], files[ch][2], files[ch][3], files[ch][4])
         else:
             print(f'File "{files[ch][3]}" is up to date.')
     except (IndexError, ValueError):
@@ -258,27 +271,27 @@ def add_tracked_file() -> None:
     print('Adding a file.')
 
     try:
-        owner_name, repo_name, branch, path = ask_user_for_data()
+        owner_name, repo_name, branch, path, location = ask_user_for_data()
     except TypeError:
         return
 
-    download_file(owner_name, repo_name, branch, path)
+    download_file(owner_name, repo_name, branch, path, location)
 
     FILES_DIRECTORY_PATH.mkdir(exist_ok=True)
     with open(FILES_FILE_PATH, 'a') as file:
-        file.write(f'{owner_name} {repo_name} {branch} {path}\n')
+        file.write(f'{owner_name} {repo_name} {branch} {path} {location}\n')
 
     print(f'File "{path}" was successfully added to the list of tracked files.')
 
 
 def download_file_without_tracking() -> None:
     try:
-        owner_name, repo_name, branch, path = ask_user_for_data()
+        owner_name, repo_name, branch, path, location = ask_user_for_data()
     except TypeError:
         return
 
     if check_download(owner_name, repo_name, branch, path):
-        download_file(owner_name, repo_name, branch, path)
+        download_file(owner_name, repo_name, branch, path, location)
     else:
         print(f'File "{path}" is up to date.')
 
@@ -299,16 +312,19 @@ def auto_update_files() -> None:
 
     for file in files:
         if check_download(file[0], file[1], file[2], file[3]):
-            download_file(file[0], file[1], file[2], file[3])
-            print(f'"{file[3]}" was updated')
+            download_file(file[0], file[1], file[2], file[3], file[4])
+            print(f'"{file[3]}" was updated.')
         else:
-            print(f'"{file[3]}" was not updated')
+            print(f'"{file[3]}" was not updated.')
 
 
 def manual() -> None:
     print(textwrap.dedent('''
     Q: How to generate an access token?
     A: Link: https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens#creating-a-personal-access-token-classic
+    
+    Q: What format of link should i consider when I add a new file?
+    A: This is how link should look like: https://github.com/revel111/GithubDownloader/blob/master/main.py
     
     Q: Where can I report about bugs and send any idea regarding this project?
     A: Link: https://github.com/revel111/GithubDownloader/issues 
