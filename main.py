@@ -1,122 +1,18 @@
-import base64
-import os.path
-import re
 import textwrap
-from datetime import datetime, timezone
 from pathlib import Path
 
-from github import Github, BadCredentialsException, UnknownObjectException, GithubException
+from github import Github, BadCredentialsException
 from requests.exceptions import ConnectionError
 from tabulate import tabulate
 
-from funcs import return_manual
-
-CURRENT_FILE_PATH = Path(__file__).parent.resolve()
-FILES_DIRECTORY_PATH = CURRENT_FILE_PATH / 'data'
-AUTH_FILE_PATH = FILES_DIRECTORY_PATH / 'credentials.txt'
-FILES_FILE_PATH = FILES_DIRECTORY_PATH / 'files.txt'
-DOWNLOADED_DIRECTORY_PATH = CURRENT_FILE_PATH / 'downloaded'
-LOG_PATH = CURRENT_FILE_PATH / 'log.txt'
-git = Github()
+import global_variables as gv
+from funcs import read_tracked_files, validate_path, return_manual, parse_link, read_credentials, \
+    delete_all_tracked_files, download_file, delete_tracked_file, authenticate_token, check_download, validate_data
+from global_variables import DOWNLOADED_DIRECTORY_PATH, FILES_DIRECTORY_PATH, AUTH_FILE_PATH, FILES_FILE_PATH, \
+    GeneralException
 
 
-def download_file(owner_name, repo_name, branch, path, location) -> None:
-    location = Path(location)
-    try:
-        repo = git.get_repo(f"{owner_name}/{repo_name}")
-        content_encoded = repo.get_contents(path, ref=branch).content
-    except (UnknownObjectException, GithubException):
-        print('Invalid data was passed.')
-        return
-    except ConnectionError:
-        print('No connection with Github. Please check your network connection or try again later.')
-        return
-
-    content = base64.b64decode(content_encoded).decode('utf-8')
-    name = path.split('/')[-1]
-
-    DOWNLOADED_DIRECTORY_PATH.mkdir(exist_ok=True)
-
-    if location.exists() and location.is_dir():
-        with open(location / name, 'w') as file:
-            file.write(content)
-        print(f'File "{path}" was downloaded into "{location}".')
-    else:
-        with open(DOWNLOADED_DIRECTORY_PATH / name, 'w') as file:
-            file.write(content)
-        print(f'Location "{location}" does not exist, file was was downloaded into "{DOWNLOADED_DIRECTORY_PATH}".')
-
-
-def log(message) -> None:
-    with open(LOG_PATH, 'a') as file:
-        file.write(f'{datetime.now()} {message}' + '\n')
-
-
-def check_download(owner_name, repo_name, branch, path) -> bool:
-    try:
-        repo = git.get_repo(f"{owner_name}/{repo_name}")
-        commits = repo.get_commits(path=path, sha=branch)
-
-        latest_commit = commits[0]
-        name = path.split('/')[-1]
-        file = DOWNLOADED_DIRECTORY_PATH / name
-
-        if not file.exists():
-            return True
-
-        commit_date = latest_commit.commit.author.date
-    except (UnknownObjectException, GithubException):
-        print('Invalid data was passed.')
-        return False
-    except ConnectionError:
-        print('No connection with Github. Please check your network connection or try again later.')
-        return False
-
-    creation_time = os.path.getctime(file)
-    creation_date = datetime.fromtimestamp(creation_time, tz=timezone.utc)
-
-    return commit_date > creation_date
-
-
-def authenticate_token() -> None:
-    print('Read about personal access token here and generate it to start use this application.\n'
-          'Link: https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens#creating-a-personal-access-token-classic')
-    token = input('Enter your secure token: ')
-
-    try:
-        global git
-        git = Github(token)
-        git.get_user().login
-        print('Authentication is successful.')
-    except BadCredentialsException:
-        print('You entered invalid secure token. Try again.\n')
-        authenticate_token()
-        return
-    except ConnectionError:
-        print('No connection with Github. Please check your network connection or try again later.')
-        return
-
-    FILES_DIRECTORY_PATH.mkdir(exist_ok=True)
-    with open(AUTH_FILE_PATH, 'w') as file:
-        file.write(token)
-
-
-def read_credentials() -> str:
-    with open(AUTH_FILE_PATH, 'r') as file:
-        return file.read()
-
-
-def read_tracked_files() -> list:
-    with open(FILES_FILE_PATH, 'r') as file:
-        files = [line.split() for line in file]
-
-    if not files:
-        raise FileNotFoundError
-
-    return files
-
-
-def show_and_return_tracked_files() -> list | None:
+def console_and_return_tracked_files() -> list | None:
     try:
         files = read_tracked_files()
     except FileNotFoundError:
@@ -137,132 +33,60 @@ def update_all_tracked_files() -> None:
         return
 
     for file in files:
-        if check_download(file[0], file[1], file[2], file[3]):
-            download_file(file[0], file[1], file[2], file[3], file[4])
+        if check_download(file[0], file[1], file[2], file[3], file[4]):
+            console_download_file(file[0], file[1], file[2], file[3], file[4])
         else:
             print(f'File "{file[3]}" is up to date.')
 
 
 def ask_user_for_data() -> tuple[str, str, str, str, Path] | None:
     try:
-        owner_name, repo_name, branch, path = parse_link()
+        link = input('Enter a link to the file: ')
+        owner_name, repo_name, branch, path = parse_link(link)
     except ValueError:
         print('Wrong link format.')
         return
 
     try:
-        try:
-            git.get_user(owner_name)
-        except UnknownObjectException:
-            print(f'The user "{owner_name}" does not exist.')
-            return
-
-        try:
-            repo = git.get_repo(f"{owner_name}/{repo_name}")
-        except UnknownObjectException:
-            print(f'The repository "{repo_name}" does not exist.')
-            return
-
-        try:
-            repo.get_branch(branch)
-        except GithubException:
-            print(f'The branch "{branch}" does not exist in the repository "{repo_name}".')
-            return
-
-        try:
-            repo.get_contents(path, ref=branch)
-        except UnknownObjectException:
-            print(f'The file "{path}" does not exist in the branch "{branch}".')
-            return
-
-        location = Path(input('Enter a path where you want to store a file: '))
-        if not location.exists() or not location.is_dir():
-            print(
-                f'Location "{location}" does not exist. File will be stored in the "{DOWNLOADED_DIRECTORY_PATH}"')
-            location = DOWNLOADED_DIRECTORY_PATH
-
-    except ConnectionError:
-        print('No connection with Github. Please check your network connection or try again later.')
+        validate_data(owner_name, repo_name, branch, path)
+    except GeneralException as e:
+        print(e)
         return
+
+    input_loc = input('Enter a path where you want to store a file: ')
+    location = validate_path(Path(input_loc))
+
+    if location == DOWNLOADED_DIRECTORY_PATH:
+        print(
+            f'Location "{input_loc}" does not exist. File will be stored in the "{DOWNLOADED_DIRECTORY_PATH}"')
 
     return owner_name, repo_name, branch, path, location
 
 
-def parse_link() -> tuple[str, str, str, str]:
-    link = input('Enter a link to the file: ')
-    pattern = r"https://github\.com/(?P<owner_name>[^/]+)/(?P<repo_name>[^/]+)/blob/(?P<branch>[^/]+)/(?P<path>.+)"
-    match = re.match(pattern, link)
-
-    if match:
-        return (
-            match.group('owner_name'),
-            match.group('repo_name'),
-            match.group('branch'),
-            match.group('path')
-        )
-    else:
-        raise ValueError
-
-
 def delete_tracked_file_by_index() -> None:
-    files = show_and_return_tracked_files()
+    files = console_and_return_tracked_files()
 
     if not files:
         return
     try:
         ch = int(input('Type index of file you want to update: '))
-        delete_tracked_file(f'{files[ch][0]}{files[ch][1]}{files[ch][2]}{files[ch][3]}', files[ch][3])
+        print(delete_tracked_file(f'{files[ch][0]}{files[ch][1]}{files[ch][2]}{files[ch][3]}', files[ch][3]))
+    except GeneralException as e:
+        print(e)
     except (IndexError, ValueError):
         print('Wrong input.')
-        return
-
-
-def delete_tracked_file_by_link() -> None:
-    try:
-        owner_name, repo_name, branch, path = parse_link()
-    except ValueError:
-        print('Wrong input.')
-        return
-
-    delete_tracked_file(f'{owner_name}{repo_name}{branch}{path}', path.split('/')[-1])
-
-
-def delete_tracked_file(line_to_delete, name) -> None:
-    try:
-        with open(FILES_FILE_PATH, 'r+') as file:
-            flag = False
-            lines = file.readlines()
-            file.seek(0)
-
-            if len(lines) == 0:
-                raise FileNotFoundError
-
-            for line in lines:
-                if ''.join(line.strip('\n').split(' ')[:-1]) != line_to_delete:
-                    file.write(line)
-                else:
-                    flag = True
-
-            if flag:
-                print(f'File "{name}" was deleted.')
-            else:
-                print(f'File "{name}" does not exist.')
-
-            file.truncate()
-    except FileNotFoundError:
-        print('No files are currently being tracked.')
 
 
 def update_tracked_file() -> None:
-    files = show_and_return_tracked_files()
+    files = console_and_return_tracked_files()
 
     if not files:
         return
 
     try:
         ch = int(input('Type index of file you want to update: '))
-        if check_download(files[ch][0], files[ch][1], files[ch][2], files[ch][3]):
-            download_file(files[ch][0], files[ch][1], files[ch][2], files[ch][3], files[ch][4])
+        if check_download(files[ch][0], files[ch][1], files[ch][2], files[ch][3], files[ch][4]):
+            console_download_file(files[ch][0], files[ch][1], files[ch][2], files[ch][3], files[ch][4])
         else:
             print(f'File "{files[ch][3]}" is up to date.')
     except (IndexError, ValueError):
@@ -277,7 +101,7 @@ def add_tracked_file() -> None:
     except TypeError:
         return
 
-    download_file(owner_name, repo_name, branch, path, location)
+    console_download_file(owner_name, repo_name, branch, path, location)
 
     FILES_DIRECTORY_PATH.mkdir(exist_ok=True)
     with open(FILES_FILE_PATH, 'a') as file:
@@ -286,38 +110,46 @@ def add_tracked_file() -> None:
     print(f'File "{path}" was successfully added to the list of tracked files.')
 
 
-def download_file_without_tracking() -> None:
+def console_download_file_without_tracking() -> None:
     try:
         owner_name, repo_name, branch, path, location = ask_user_for_data()
     except TypeError:
         return
 
-    if check_download(owner_name, repo_name, branch, path):
-        download_file(owner_name, repo_name, branch, path, location)
-    else:
-        print(f'File "{path}" is up to date.')
+    console_download_file(owner_name, repo_name, branch, path, location)
 
 
-def delete_all_tracked_files() -> None:
-    if FILES_FILE_PATH.exists():
-        Path.unlink(FILES_FILE_PATH)
-        print('All tracked files were deleted.')
-    else:
-        print('No files were being tracked.')
-
-
-def auto_update_files() -> None:
+def console_download_file(owner_name, repo_name, branch, path, location) -> None:
     try:
-        files = read_tracked_files()
-    except FileNotFoundError:
-        return
+        download_file(owner_name, repo_name, branch, path, location)
+    except GeneralException as e:
+        print(e)
 
-    for file in files:
-        if check_download(file[0], file[1], file[2], file[3]):
-            download_file(file[0], file[1], file[2], file[3], file[4])
-            print(f'"{file[3]}" was updated.')
-        else:
-            print(f'"{file[3]}" was not updated.')
+
+def console_delete_all_tracked_files() -> None:
+    try:
+        delete_all_tracked_files()
+    except GeneralException as e:
+        print(e)
+
+
+def console_delete_tracked_file_by_link() -> None:
+    try:
+        delete_tracked_file_by_link(input('Enter a link to the file: '))
+    except GeneralException as e:
+        print(e)
+
+
+def delete_tracked_file_by_link(link) -> None:
+    try:
+        owner_name, repo_name, branch, path = parse_link(link)
+    except ValueError:
+        raise gv.WarningException('Wrong input.')
+
+    try:
+        delete_tracked_file(f'{owner_name}{repo_name}{branch}{path}', path.split('/')[-1])
+    except GeneralException as e:
+        print(e)
 
 
 def manual() -> None:
@@ -327,7 +159,7 @@ def manual() -> None:
 def main_menu() -> None:
     while True:
         print('=================================================\n'
-              'You are logged in as ' + git.get_user().login)
+              'You are logged in as ' + gv.git.get_user().login)
         print(textwrap.dedent('''
             Type 1 if you want to change credentials.
             Type 2 to show all tracked files.
@@ -346,9 +178,9 @@ def main_menu() -> None:
 
         match ch:
             case '1':
-                authenticate_token()
+                console_authenticate_token()
             case '2':
-                show_and_return_tracked_files()
+                console_and_return_tracked_files()
             case '3':
                 add_tracked_file()
             case '4':
@@ -356,13 +188,13 @@ def main_menu() -> None:
             case '5':
                 update_tracked_file()
             case '6':
-                download_file_without_tracking()
+                console_download_file_without_tracking()
             case '7':
                 delete_tracked_file_by_index()
             case '8':
-                delete_tracked_file_by_link()
+                console_delete_tracked_file_by_link()
             case '9':
-                delete_all_tracked_files()
+                console_delete_all_tracked_files()
             case '10':
                 manual()
             case '0':
@@ -371,18 +203,30 @@ def main_menu() -> None:
                 print('Wrong input.')
 
 
+def console_authenticate_token() -> None:
+    print('Read about personal access token here and generate it to start use this application.\n'
+          'Link: https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens#creating-a-personal-access-token-classic')
+    token = input('Enter your secure token: ')
+
+    try:
+        authenticate_token(token)
+    except GeneralException as e:
+        print(e)
+        console_authenticate_token()
+        return
+
+
 def main() -> None:
     print('Github downloader v1.0 by revel111.')
 
     if not AUTH_FILE_PATH.exists():
-        authenticate_token()
+        console_authenticate_token()
     else:
         try:
-            global git
-            git = Github(read_credentials())
-            git.get_user().login
+            gv.git = Github(read_credentials())
+            gv.git.get_user().login
         except BadCredentialsException:
-            authenticate_token()
+            console_authenticate_token()
 
     try:
         main_menu()

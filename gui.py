@@ -1,35 +1,41 @@
+from pathlib import Path
+
 import customtkinter
 from CTkMenuBar import CTkMenuBar
-from customtkinter import CTk, CTkButton, CTkToplevel
+from CTkMessagebox import CTkMessagebox
+from customtkinter import CTk, CTkButton, CTkToplevel, CTkFrame, CTkLabel, CTkEntry, CTkInputDialog, CTkOptionMenu
+from github import Github
 
-from funcs import return_manual
+from main import return_manual, parse_link, validate_path
+
+git = Github()
 
 
-class ManualWindow(customtkinter.CTkToplevel):
+class ManualWindow(CTkToplevel):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         self.geometry(center_window(self, self._get_window_scaling()))
         self.title('Manual')
-        self.geometry('800x300')
+        self.geometry('600x300')
 
         self.grid_columnconfigure(0, weight=1)
 
         self.text = customtkinter.CTkTextbox(self, fg_color='transparent')
         self.text.insert('0.0', return_manual())
         self.text.configure(state='disabled')
-        # self.text = customtkinter.CTkLabel(self, text=return_manual(), anchor='w', justify='left')
         self.text.grid(row=0, column=0, sticky='we')
+        self.attributes('-topmost', True)
 
 
-class AppearanceFrame(customtkinter.CTkFrame):
+class AppearanceFrame(CTkFrame):
     def __init__(self, master, **kwargs):
         super().__init__(master, **kwargs)
 
-        self.appearance_mode_label = customtkinter.CTkLabel(self, text='Appearance Mode', anchor='w')
+        self.appearance_mode_label = CTkLabel(self, text='Appearance Mode', anchor='w')
         self.appearance_mode_label.grid(row=0, column=0, padx=10, pady=(10, 0))
-        self.appearance_mode_option_menu = customtkinter.CTkOptionMenu(self, values=['Light', 'Dark', 'System'],
-                                                                       command=self.change_appearance_mode_event)
+        self.appearance_mode_option_menu = CTkOptionMenu(self, values=['Light', 'Dark', 'System'],
+                                                         command=self.change_appearance_mode_event)
         self.appearance_mode_option_menu.grid(row=1, column=0, padx=20, pady=(10, 10))
 
         self.scaling_label = customtkinter.CTkLabel(self, text='UI Scaling', anchor='w')
@@ -50,14 +56,14 @@ class AppearanceFrame(customtkinter.CTkFrame):
         customtkinter.set_widget_scaling(new_scaling_float)
 
 
-class InputFrame(customtkinter.CTkFrame):
+class InputFrame(CTkFrame):
     def __init__(self, master, **kwargs):
         super().__init__(master, **kwargs)
 
-        self.entry = customtkinter.CTkEntry(master=self, placeholder_text='Enter a link')
-        self.add_button = customtkinter.CTkButton(master=self, text='add', command=poxuy)
-        self.download_button = customtkinter.CTkButton(master=self, text='download', command=poxuy)
-        self.delete_button = customtkinter.CTkButton(master=self, text='delete', command=poxuy)
+        self.entry = CTkEntry(master=self, placeholder_text='Enter a link')
+        self.add_button = CTkButton(master=self, text='add', command=self.add_file_open_window)
+        self.download_button = CTkButton(master=self, text='download', command=poxuy)
+        self.delete_button = CTkButton(master=self, text='delete', command=poxuy)
 
         self.entry.grid(row=0, column=0, padx=10, pady=0, sticky='we')
         self.add_button.grid(row=0, column=1, padx=10, pady=0, sticky='e')
@@ -66,10 +72,26 @@ class InputFrame(customtkinter.CTkFrame):
 
         self.configure(fg_color='transparent')
 
-    # def add_file_open_window(self) -> None:
+    def add_file_open_window(self) -> None:
+        try:
+            owner_name, repo_name, branch, path = parse_link(self.entry.get())
+        except ValueError:
+            CTkMessagebox(title='Error', message='Wrong link format.', icon='cancel')
+            return
+        # TODO validation.
 
+        path_input = CTkInputDialog(text='Enter a path where you want to store a file.', title='Path')
 
-class App(customtkinter.CTk):
+        location = validate_path(Path(path_input.get_input()))
+        print(location)
+
+    # def download_file(self) -> None:
+
+    # def delete_file(self) -> None:
+
+    # def ask_user_for_data() -> N
+
+class App(CTk):
     def __init__(self):
         super().__init__()
 
@@ -90,7 +112,7 @@ class App(customtkinter.CTk):
         self.menubar = CTkMenuBar(master=self)
         self.menubar.grid(row=0, column=0, padx=0, pady=0, sticky='we')
 
-        self.menubar.add_cascade('Credentials', poxuy)
+        self.menubar.add_cascade('Credentials', self.open_authentication)
         self.menubar.add_cascade('Manual', self.open_manual)
 
         self.input_frame = InputFrame(master=self)
@@ -106,7 +128,15 @@ class App(customtkinter.CTk):
                 not self.toplevel_window.winfo_exists()):
             self.toplevel_window = ManualWindow(self)
         else:
-            self.toplevel_window.focus()
+            self.toplevel_window.focus_force()
+
+    @staticmethod
+    def open_authentication() -> None:
+        token_input = CTkInputDialog(
+            text='''Read about personal access token here and generate it to start use this application.
+                    Link: https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens#creating-a-personal-access-token-classic''',
+            title='Authentication')
+        print(token_input.get_input())
 
 
 # credits to this young man: https://github.com/TomSchimansky/CustomTkinter/discussions/1820
