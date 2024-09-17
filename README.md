@@ -38,6 +38,7 @@ Uninstallation deletes script from the startup.\
 **This app was tested on Windows 10 and Lubuntu 24.04.**
 
 ## Plans for improvement:
+  - GUI;
   - Possibility of custom frequency of file updating;
   - Possibility of tracking directory;
   - Manage duplicated files;
