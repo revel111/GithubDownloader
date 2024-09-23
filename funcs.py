@@ -5,10 +5,11 @@ import textwrap
 from datetime import datetime, timezone
 from pathlib import Path
 
+from CTkMessagebox import CTkMessagebox
 from github import Github, BadCredentialsException, UnknownObjectException, GithubException
 
 import global_variables as gv
-from global_variables import FILES_FILE_PATH, AUTH_FILE_PATH, DOWNLOADED_DIRECTORY_PATH
+from global_variables import FILES_FILE_PATH, AUTH_FILE_PATH, DOWNLOADED_DIRECTORY_PATH, GeneralException
 
 
 def return_manual() -> str:
@@ -184,3 +185,31 @@ def validate_data(owner_name, repo_name, branch, path) -> None:
             raise gv.ErrorException(f'The file "{path}" does not exist in the branch "{branch}".')
     except ConnectionError:
         raise gv.WarningException('No connection with Github. Please check your network connection or try again later.')
+
+
+def save_tracked_file(owner_name, repo_name, branch, path, location) -> None:
+    gv.FILES_DIRECTORY_PATH.mkdir(exist_ok=True)
+
+    with open(FILES_FILE_PATH, 'a') as file:
+        file.write(f'{owner_name} {repo_name} {branch} {path} {location}\n')
+
+
+def define_exception(exception, master) -> CTkMessagebox:
+    icon = str
+    title = str
+
+    match exception:
+        case gv.SuccessException():
+            icon = 'check'
+            title = 'Success'
+        case gv.ErrorException():
+            icon = 'cancel'
+            title = 'Error'
+        case gv.WarningException():
+            icon = 'warning'
+            title = 'Warning'
+        case gv.InfoException():
+            icon = 'info'
+            title = 'Info'
+
+    return CTkMessagebox(master=master, icon=icon, title=title, message=str(exception))

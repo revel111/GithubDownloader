@@ -1,11 +1,15 @@
 from pathlib import Path
+from types import NoneType
 
 import customtkinter
 from CTkMenuBar import CTkMenuBar
 from CTkMessagebox import CTkMessagebox
 from customtkinter import CTk, CTkButton, CTkToplevel, CTkFrame, CTkLabel, CTkEntry, CTkInputDialog, CTkOptionMenu
+from docutils.nodes import title
 from github import Github
 
+from funcs import validate_data, define_exception, save_tracked_file
+from global_variables import GeneralException, DOWNLOADED_DIRECTORY_PATH
 from main import return_manual, parse_link, validate_path
 
 git = Github()
@@ -76,20 +80,38 @@ class InputFrame(CTkFrame):
         try:
             owner_name, repo_name, branch, path = parse_link(self.entry.get())
         except ValueError:
-            CTkMessagebox(title='Error', message='Wrong link format.', icon='cancel')
+            CTkMessagebox(master=self, title='Error', message='Wrong link format.', icon='cancel')
             return
-        # TODO validation.
 
-        path_input = CTkInputDialog(text='Enter a path where you want to store a file.', title='Path')
+        try:
+            validate_data(owner_name, repo_name, branch, path)
+        except GeneralException as e:
+            define_exception(e, self)
+            return
 
-        location = validate_path(Path(path_input.get_input()))
-        print(location)
+        location_input_dialog = CTkInputDialog(text='Enter a path where you want to store a file.', title='Path')
+        path = location_input_dialog.get_input()
+        location = validate_path(Path(path))
 
+        location_warning = None
+        if location == DOWNLOADED_DIRECTORY_PATH:
+            location_warning = CTkMessagebox(master=self,
+                                             title='Warning',
+                                             message=f'Location "{path}" does not exist. File will be stored in the "{DOWNLOADED_DIRECTORY_PATH}"',
+                                             icon='warning')
+
+        save_tracked_file(owner_name, repo_name, branch, path, location)
+
+        if location is NoneType or location_warning.get():
+            CTkMessagebox(title='Success',
+                          message=f'File "{path}" was successfully added to the list of tracked files.',
+                          icon='check')
     # def download_file(self) -> None:
 
     # def delete_file(self) -> None:
 
     # def ask_user_for_data() -> N
+
 
 class App(CTk):
     def __init__(self):

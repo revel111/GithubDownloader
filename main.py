@@ -7,7 +7,8 @@ from tabulate import tabulate
 
 import global_variables as gv
 from funcs import read_tracked_files, validate_path, return_manual, parse_link, read_credentials, \
-    delete_all_tracked_files, download_file, delete_tracked_file, authenticate_token, check_download, validate_data
+    delete_all_tracked_files, download_file, delete_tracked_file, authenticate_token, check_download, validate_data, \
+    save_tracked_file
 from global_variables import DOWNLOADED_DIRECTORY_PATH, FILES_DIRECTORY_PATH, AUTH_FILE_PATH, FILES_FILE_PATH, \
     GeneralException
 
@@ -103,9 +104,7 @@ def add_tracked_file() -> None:
 
     console_download_file(owner_name, repo_name, branch, path, location)
 
-    FILES_DIRECTORY_PATH.mkdir(exist_ok=True)
-    with open(FILES_FILE_PATH, 'a') as file:
-        file.write(f'{owner_name} {repo_name} {branch} {path} {location}\n')
+    save_tracked_file(owner_name, repo_name, branch, path, location)
 
     print(f'File "{path}" was successfully added to the list of tracked files.')
 
