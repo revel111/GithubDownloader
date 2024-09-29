@@ -8,9 +8,9 @@ from customtkinter import CTk, CTkButton, CTkToplevel, CTkFrame, CTkLabel, CTkEn
 from docutils.nodes import title
 from github import Github
 
-from funcs import validate_data, define_exception, save_tracked_file
+from funcs import validate_data, define_exception, save_tracked_file, download_file
 from global_variables import GeneralException, DOWNLOADED_DIRECTORY_PATH
-from main import return_manual, parse_link, validate_path
+from main import return_manual, parse_link, validate_path, ask_user_for_data
 
 git = Github()
 
@@ -77,6 +77,16 @@ class InputFrame(CTkFrame):
         self.configure(fg_color='transparent')
 
     def add_file_open_window(self) -> None:
+        owner_name, repo_name, branch, path, location, location_warning = self.ask_user_for_data()
+
+        save_tracked_file(owner_name, repo_name, branch, path, location)
+
+        if location is NoneType or location_warning.get():
+            CTkMessagebox(title='Success',
+                          message=f'File "{path}" was successfully added to the list of tracked files.',
+                          icon='check')
+
+    def ask_user_for_data(self) -> tuple[str, str, str, str, Path, CTkMessagebox] | None:
         try:
             owner_name, repo_name, branch, path = parse_link(self.entry.get())
         except ValueError:
@@ -100,17 +110,26 @@ class InputFrame(CTkFrame):
                                              message=f'Location "{path}" does not exist. File will be stored in the "{DOWNLOADED_DIRECTORY_PATH}"',
                                              icon='warning')
 
-        save_tracked_file(owner_name, repo_name, branch, path, location)
+        return owner_name, repo_name, branch, path, location, location_warning
 
-        if location is NoneType or location_warning.get():
-            CTkMessagebox(title='Success',
-                          message=f'File "{path}" was successfully added to the list of tracked files.',
-                          icon='check')
-    # def download_file(self) -> None:
+    def window_download_file_without_tracking(self) -> None:
+        try:
+            owner_name, repo_name, branch, path, location = self.ask_user_for_data()
+        except TypeError:
+            return
 
-    # def delete_file(self) -> None:
+        self.window_download_file(self, owner_name, repo_name, branch, path, location)
 
-    # def ask_user_for_data() -> N
+    def window_download_file(self, owner_name, repo_name, branch, path, location) -> None:
+        try:
+            download_file(owner_name, repo_name, branch, path, location)
+        except GeneralException as e:
+            define_exception(e, self)
+
+
+# def delete_file(self) -> None:
+
+# def ask_user_for_data() -> N
 
 
 class App(CTk):
