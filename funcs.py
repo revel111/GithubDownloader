@@ -9,7 +9,7 @@ from CTkMessagebox import CTkMessagebox
 from github import Github, BadCredentialsException, UnknownObjectException, GithubException
 
 import global_variables as gv
-from global_variables import FILES_FILE_PATH, AUTH_FILE_PATH, DOWNLOADED_DIRECTORY_PATH, GeneralException
+from global_variables import FILES_FILE_PATH, AUTH_FILE_PATH, DOWNLOADED_DIRECTORY_PATH
 
 
 def return_manual() -> str:
@@ -53,11 +53,14 @@ def read_credentials() -> str:
         return file.read()
 
 
-def read_tracked_files() -> list:
+def read_tracked_files() -> list[list[str]]:
     with open(FILES_FILE_PATH, 'r') as file:
-        files = [line.split() for line in file]
+        return [line.split() for line in file]
 
-    return files
+
+def fabricate_links() -> list[list[str]]:
+    return [[f'https://github.com/{line[0]}/{line[1]}/blob/{line[2]}/{line[3]}', line[4]] for line in
+            read_tracked_files()]
 
 
 def check_download(owner_name: str, repo_name: str, branch: str, path: str, location: Path) -> bool:
@@ -117,6 +120,25 @@ def download_file(owner_name: str, repo_name: str, branch: str, path: str, locat
             file.write(content)
         raise gv.InfoException(
             f'Location "{location}" does not exist, file was was downloaded into "{DOWNLOADED_DIRECTORY_PATH}".')
+
+
+def search_location_by_link(link: str, name: str) -> str:
+    try:
+        with open(FILES_FILE_PATH, 'r') as file:
+            lines = file.readlines()
+
+            if len(lines) == 0:
+                raise FileNotFoundError
+
+            for line in lines:
+                split = line.strip('\n').split(' ')
+
+                if ''.join(split[:-1]) == link:
+                   return split[-1]
+            else:
+                raise gv.ErrorException(f'File "{name}" does not exist.')
+    except FileNotFoundError:
+        raise gv.WarningException('No files are currently being tracked.')
 
 
 def delete_tracked_file(line_to_delete: str, name: str) -> None:

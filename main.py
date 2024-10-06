@@ -8,7 +8,7 @@ from tabulate import tabulate
 import global_variables as gv
 from funcs import read_tracked_files, validate_path, return_manual, parse_link, read_credentials, \
     delete_all_tracked_files, download_file, delete_tracked_file, authenticate_token, check_download, validate_data, \
-    save_tracked_file
+    save_tracked_file, fabricate_links, search_location_by_link
 from global_variables import DOWNLOADED_DIRECTORY_PATH, AUTH_FILE_PATH, GeneralException
 
 
@@ -23,8 +23,7 @@ def console_and_return_tracked_files() -> list | None:
         print('No files are currently being tracked.')
         return None
 
-    print(tabulate(files, headers=['№', 'Owner name', 'Repository name', 'Branch name', 'File path', 'Stored'],
-                   showindex="always"))
+    print(tabulate(fabricate_links(), headers=['№', 'Link', 'Stored'], showindex="always"))
 
     return files
 
@@ -76,8 +75,9 @@ def delete_tracked_file_by_index() -> None:
 
     if not files:
         return
+
     try:
-        ch = int(input('Type index of file you want to update: '))
+        ch = int(input('Type index of file you want to delete: '))
         print(delete_tracked_file(f'{files[ch][0]}{files[ch][1]}{files[ch][2]}{files[ch][3]}', files[ch][3]))
     except GeneralException as e:
         print(e)
@@ -85,7 +85,7 @@ def delete_tracked_file_by_index() -> None:
         print('Wrong input.')
 
 
-def update_tracked_file() -> None:
+def update_tracked_file_by_index() -> None:
     files = console_and_return_tracked_files()
 
     if not files:
@@ -139,6 +139,27 @@ def console_delete_all_tracked_files() -> None:
         print(e)
 
 
+def console_update_tracked_file_by_link() -> None:
+    try:
+        update_tracked_file_by_link(input('Enter a link to the file: '))
+    except GeneralException as e:
+        print(e)
+
+
+def update_tracked_file_by_link(link: str) -> None:
+    try:
+        owner_name, repo_name, branch, path = parse_link(link)
+    except ValueError:
+        raise gv.WarningException('Wrong input.')
+
+    location = search_location_by_link(f'{owner_name}{repo_name}{branch}{path}', path.split('/')[-1])
+
+    try:
+        download_file(owner_name, repo_name, branch, path, location)
+    except GeneralException as e:
+        print(e)
+
+
 def console_delete_tracked_file_by_link() -> None:
     try:
         delete_tracked_file_by_link(input('Enter a link to the file: '))
@@ -175,12 +196,13 @@ def main_menu() -> None:
             Type 2 to show all tracked files.
             Type 3 to add a new tracked file and download it.
             Type 4 to immediately update all tracked files.
-            Type 5 to update a specific tracked file.
-            Type 6 to download a file.
-            Type 7 to delete a tracked file.
-            Type 8 to delete a tracked file by link.
-            Type 9 to delete all tracked files.
-            Type 10 to see the manual (help).
+            Type 5 to update a tracked file by index.
+            Type 6 to update a tracked file by link.
+            Type 7 to download a file.
+            Type 8 to delete a tracked file by index.
+            Type 9 to delete a tracked file by link.
+            Type 10 to delete all tracked files.
+            Type 11 to see the manual (help).
             Type 0 to exit.
         '''))
         ch = input('Type: ')
@@ -196,16 +218,18 @@ def main_menu() -> None:
             case '4':
                 update_all_tracked_files()
             case '5':
-                update_tracked_file()
+                update_tracked_file_by_index()
             case '6':
-                console_download_file_without_tracking()
+                console_update_tracked_file_by_link()
             case '7':
-                delete_tracked_file_by_index()
+                console_download_file_without_tracking()
             case '8':
-                console_delete_tracked_file_by_link()
+                delete_tracked_file_by_index()
             case '9':
-                console_delete_all_tracked_files()
+                console_delete_tracked_file_by_link()
             case '10':
+                console_delete_all_tracked_files()
+            case '11':
                 manual()
             case '0':
                 raise KeyboardInterrupt
