@@ -26,7 +26,7 @@ def return_manual() -> str:
     ''')
 
 
-def parse_link(link) -> tuple[str, str, str, str]:
+def parse_link(link: str) -> tuple[str, str, str, str]:
     pattern = r"https://github\.com/(?P<owner_name>[^/]+)/(?P<repo_name>[^/]+)/blob/(?P<branch>[^/]+)/(?P<path>.+)"
     match = re.match(pattern, link)
 
@@ -41,7 +41,7 @@ def parse_link(link) -> tuple[str, str, str, str]:
         raise ValueError
 
 
-def validate_path(path) -> Path:
+def validate_path(path: Path) -> Path:
     if not path.exists() or not path.is_dir():
         path = DOWNLOADED_DIRECTORY_PATH
 
@@ -63,7 +63,7 @@ def read_tracked_files() -> list:
     return files
 
 
-def check_download(owner_name, repo_name, branch, path, location) -> bool:
+def check_download(owner_name: str, repo_name: str, branch: str, path: str, location: Path) -> bool:
     location = Path(location)
 
     if not location.exists():
@@ -95,7 +95,7 @@ def delete_all_tracked_files() -> None:
     raise gv.WarningException('No files were being tracked.')
 
 
-def download_file(owner_name, repo_name, branch, path, location) -> None:
+def download_file(owner_name: str, repo_name: str, branch: str, path: str, location: str) -> None:
     location = Path(location)
 
     try:
@@ -122,7 +122,7 @@ def download_file(owner_name, repo_name, branch, path, location) -> None:
             f'Location "{location}" does not exist, file was was downloaded into "{DOWNLOADED_DIRECTORY_PATH}".')
 
 
-def delete_tracked_file(line_to_delete, name) -> None:
+def delete_tracked_file(line_to_delete: str, name: str) -> None:
     try:
         with open(FILES_FILE_PATH, 'r+') as file:
             flag = False
@@ -148,7 +148,7 @@ def delete_tracked_file(line_to_delete, name) -> None:
         raise gv.WarningException('No files are currently being tracked.')
 
 
-def authenticate_token(token) -> None:
+def authenticate_token(token: str) -> None:
     try:
         gv.git = Github(token)
         gv.git.get_user().login
@@ -162,7 +162,7 @@ def authenticate_token(token) -> None:
         file.write(token)
 
 
-def validate_data(owner_name, repo_name, branch, path) -> None:
+def validate_data(owner_name: str, repo_name: str, branch: str, path: str) -> None:
     try:
         try:
             gv.git.get_user(owner_name)
@@ -187,7 +187,7 @@ def validate_data(owner_name, repo_name, branch, path) -> None:
         raise gv.WarningException('No connection with Github. Please check your network connection or try again later.')
 
 
-def save_tracked_file(owner_name, repo_name, branch, path, location) -> None:
+def save_tracked_file(owner_name: str, repo_name: str, branch: str, path: str, location: Path) -> None:
     gv.FILES_DIRECTORY_PATH.mkdir(exist_ok=True)
 
     with open(FILES_FILE_PATH, 'a') as file:

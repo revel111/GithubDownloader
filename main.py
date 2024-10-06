@@ -9,8 +9,7 @@ import global_variables as gv
 from funcs import read_tracked_files, validate_path, return_manual, parse_link, read_credentials, \
     delete_all_tracked_files, download_file, delete_tracked_file, authenticate_token, check_download, validate_data, \
     save_tracked_file
-from global_variables import DOWNLOADED_DIRECTORY_PATH, FILES_DIRECTORY_PATH, AUTH_FILE_PATH, FILES_FILE_PATH, \
-    GeneralException
+from global_variables import DOWNLOADED_DIRECTORY_PATH, AUTH_FILE_PATH, GeneralException
 
 
 def console_and_return_tracked_files() -> list | None:
@@ -118,7 +117,7 @@ def console_download_file_without_tracking() -> None:
     console_download_file(owner_name, repo_name, branch, path, location)
 
 
-def console_download_file(owner_name, repo_name, branch, path, location) -> None:
+def console_download_file(owner_name: str, repo_name: str, branch: str, path: str, location: str) -> None:
     try:
         download_file(owner_name, repo_name, branch, path, location)
     except GeneralException as e:
@@ -139,7 +138,7 @@ def console_delete_tracked_file_by_link() -> None:
         print(e)
 
 
-def delete_tracked_file_by_link(link) -> None:
+def delete_tracked_file_by_link(link: str) -> None:
     try:
         owner_name, repo_name, branch, path = parse_link(link)
     except ValueError:

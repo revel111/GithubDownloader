@@ -51,11 +51,11 @@ class AppearanceFrame(CTkFrame):
         self.configure(fg_color='transparent')
 
     @staticmethod
-    def change_appearance_mode_event(new_appearance_mode):
+    def change_appearance_mode_event(new_appearance_mode: str):
         customtkinter.set_appearance_mode(new_appearance_mode)
 
     @staticmethod
-    def change_scaling_event(new_scaling):
+    def change_scaling_event(new_scaling: str):
         new_scaling_float = int(new_scaling.replace('%', '')) / 100
         customtkinter.set_widget_scaling(new_scaling_float)
 
@@ -114,13 +114,13 @@ class InputFrame(CTkFrame):
 
     def window_download_file_without_tracking(self) -> None:
         try:
-            owner_name, repo_name, branch, path, location = self.ask_user_for_data()
+            owner_name, repo_name, branch, path, location, location_warning = self.ask_user_for_data()
         except TypeError:
             return
 
-        self.window_download_file(self, owner_name, repo_name, branch, path, location)
+        self.window_download_file(owner_name, repo_name, branch, path, location)
 
-    def window_download_file(self, owner_name, repo_name, branch, path, location) -> None:
+    def window_download_file(self, owner_name: str, repo_name: str, branch: str, path: str, location: str) -> None:
         try:
             download_file(owner_name, repo_name, branch, path, location)
         except GeneralException as e:
@@ -177,11 +177,11 @@ class App(CTk):
             text='''Read about personal access token here and generate it to start use this application.
                     Link: https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens#creating-a-personal-access-token-classic''',
             title='Authentication')
-        print(token_input.get_input())
+        # print(token_input.get_input())
 
 
 # credits to this young man: https://github.com/TomSchimansky/CustomTkinter/discussions/1820
-def center_window(window, scaling, width=800, height=600) -> str:
+def center_window(window: App | ManualWindow, scaling: float, width=800, height=600) -> str:
     screen_width = window.winfo_screenwidth()
     screen_height = window.winfo_screenheight()
 
