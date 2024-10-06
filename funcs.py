@@ -57,9 +57,6 @@ def read_tracked_files() -> list:
     with open(FILES_FILE_PATH, 'r') as file:
         files = [line.split() for line in file]
 
-    if not files:
-        raise FileNotFoundError
-
     return files
 
 

@@ -45,6 +45,9 @@ def auto_update_files() -> None:
     except FileNotFoundError:
         return
 
+    if not files:
+        return
+
     for file in files:
         if check_download(file[0], file[1], file[2], file[3], file[4]):
             try:
@@ -53,7 +56,7 @@ def auto_update_files() -> None:
                 pass
 
 
-def log(message) -> None:
+def log(message : str) -> None:
     with open(LOG_PATH, 'a') as file:
         file.write(f'{datetime.now()} {message}' + '\n')
 
@@ -62,8 +65,9 @@ if __name__ == '__main__':
     try:
         if check_run():
             log(f'Logged in as: {git.get_user().login}')
-            run()
         else:
-            log(f'Unable to login.')
+            log(f'Logged in as anonymous.')
+
+        run()
     except KeyboardInterrupt:
         pass

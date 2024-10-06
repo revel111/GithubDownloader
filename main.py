@@ -19,6 +19,10 @@ def console_and_return_tracked_files() -> list | None:
         print('No files are currently being tracked.')
         return None
 
+    if not files:
+        print('No files are currently being tracked.')
+        return None
+
     print(tabulate(files, headers=['№', 'Owner name', 'Repository name', 'Branch name', 'File path', 'Stored'],
                    showindex="always"))
 
@@ -29,6 +33,10 @@ def update_all_tracked_files() -> None:
     try:
         files = read_tracked_files()
     except FileNotFoundError:
+        print('No files are currently being tracked.')
+        return
+
+    if not files:
         print('No files are currently being tracked.')
         return
 
@@ -156,8 +164,12 @@ def manual() -> None:
 
 def main_menu() -> None:
     while True:
-        print('=================================================\n'
-              'You are logged in as ' + gv.git.get_user().login)
+        print('=================================================')
+        try:
+            print(f'You are logged in as {gv.git.get_user().login}')
+        except BadCredentialsException:
+            print('You are logged in as anonymous. Enter a valid access token.')
+
         print(textwrap.dedent('''
             Type 1 if you want to change credentials.
             Type 2 to show all tracked files.
@@ -210,7 +222,6 @@ def console_authenticate_token() -> None:
         authenticate_token(token)
     except GeneralException as e:
         print(e)
-        console_authenticate_token()
         return
 
 
@@ -218,13 +229,13 @@ def main() -> None:
     print('Github downloader v1.0 by revel111.')
 
     if not AUTH_FILE_PATH.exists():
-        console_authenticate_token()
+        print('No access token was provided.')
     else:
         try:
             gv.git = Github(read_credentials())
             gv.git.get_user().login
         except BadCredentialsException:
-            console_authenticate_token()
+            print('Invalid access token was provided.')
 
     try:
         main_menu()

@@ -5,12 +5,11 @@ import customtkinter
 from CTkMenuBar import CTkMenuBar
 from CTkMessagebox import CTkMessagebox
 from customtkinter import CTk, CTkButton, CTkToplevel, CTkFrame, CTkLabel, CTkEntry, CTkInputDialog, CTkOptionMenu
-from docutils.nodes import title
 from github import Github
 
 from funcs import validate_data, define_exception, save_tracked_file, download_file
 from global_variables import GeneralException, DOWNLOADED_DIRECTORY_PATH
-from main import return_manual, parse_link, validate_path, ask_user_for_data
+from main import return_manual, parse_link, validate_path
 
 git = Github()
 
@@ -66,7 +65,8 @@ class InputFrame(CTkFrame):
 
         self.entry = CTkEntry(master=self, placeholder_text='Enter a link')
         self.add_button = CTkButton(master=self, text='add', command=self.add_file_open_window)
-        self.download_button = CTkButton(master=self, text='download', command=poxuy)
+        self.download_button = CTkButton(master=self, text='download',
+                                         command=self.window_download_file_without_tracking)
         self.delete_button = CTkButton(master=self, text='delete', command=poxuy)
 
         self.entry.grid(row=0, column=0, padx=10, pady=0, sticky='we')
@@ -77,7 +77,10 @@ class InputFrame(CTkFrame):
         self.configure(fg_color='transparent')
 
     def add_file_open_window(self) -> None:
-        owner_name, repo_name, branch, path, location, location_warning = self.ask_user_for_data()
+        try:
+            owner_name, repo_name, branch, path, location, location_warning = self.ask_user_for_data()
+        except TypeError:
+            return
 
         save_tracked_file(owner_name, repo_name, branch, path, location)
 
@@ -85,6 +88,11 @@ class InputFrame(CTkFrame):
             CTkMessagebox(title='Success',
                           message=f'File "{path}" was successfully added to the list of tracked files.',
                           icon='check')
+
+        try:
+            download_file(owner_name, repo_name, branch, path, location)
+        except GeneralException:
+            pass
 
     def ask_user_for_data(self) -> tuple[str, str, str, str, Path, CTkMessagebox] | None:
         try:
@@ -100,14 +108,14 @@ class InputFrame(CTkFrame):
             return
 
         location_input_dialog = CTkInputDialog(text='Enter a path where you want to store a file.', title='Path')
-        path = location_input_dialog.get_input()
-        location = validate_path(Path(path))
+        location_file = location_input_dialog.get_input()
+        location = validate_path(Path(location_file))
 
         location_warning = None
         if location == DOWNLOADED_DIRECTORY_PATH:
             location_warning = CTkMessagebox(master=self,
                                              title='Warning',
-                                             message=f'Location "{path}" does not exist. File will be stored in the "{DOWNLOADED_DIRECTORY_PATH}"',
+                                             message=f'Location "{location_file}" does not exist. File will be stored in the "{DOWNLOADED_DIRECTORY_PATH}"',
                                              icon='warning')
 
         return owner_name, repo_name, branch, path, location, location_warning
@@ -118,18 +126,18 @@ class InputFrame(CTkFrame):
         except TypeError:
             return
 
-        self.window_download_file(owner_name, repo_name, branch, path, location)
+        if location is NoneType or location_warning.get():
+            self.window_download_file(owner_name, repo_name, branch, path, location)
 
-    def window_download_file(self, owner_name: str, repo_name: str, branch: str, path: str, location: str) -> None:
+    def window_download_file(self, owner_name: str, repo_name: str, branch: str, path: str,
+                             location: str) -> CTkMessagebox:
         try:
             download_file(owner_name, repo_name, branch, path, location)
         except GeneralException as e:
-            define_exception(e, self)
+            return define_exception(e, self)
 
 
 # def delete_file(self) -> None:
-
-# def ask_user_for_data() -> N
 
 
 class App(CTk):
