@@ -56,7 +56,7 @@ def auto_update_files() -> None:
                 pass
 
 
-def log(message : str) -> None:
+def log(message: str) -> None:
     with open(LOG_PATH, 'a') as file:
         file.write(f'{datetime.now()} {message}' + '\n')
 
@@ -65,9 +65,8 @@ if __name__ == '__main__':
     try:
         if check_run():
             log(f'Logged in as: {git.get_user().login}')
+            run()
         else:
-            log(f'Logged in as anonymous.')
-
-        run()
+            log(f'Unable to login.')
     except KeyboardInterrupt:
         pass

@@ -1,7 +1,7 @@
 import textwrap
 from pathlib import Path
 
-from github import Github, BadCredentialsException
+from github import Github, BadCredentialsException, GithubException
 from requests.exceptions import ConnectionError
 from tabulate import tabulate
 
@@ -185,12 +185,8 @@ def manual() -> None:
 
 def main_menu() -> None:
     while True:
-        print('=================================================')
-        try:
-            print(f'You are logged in as {gv.git.get_user().login}')
-        except BadCredentialsException:
-            print('You are logged in as anonymous. Enter a valid access token.')
-
+        print('=================================================\n'
+              'You are logged in as ' + gv.git.get_user().login)
         print(textwrap.dedent('''
             Type 1 if you want to change credentials.
             Type 2 to show all tracked files.
@@ -240,31 +236,27 @@ def main_menu() -> None:
 def console_authenticate_token() -> None:
     print('Read about personal access token here and generate it to start use this application.\n'
           'Link: https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens#creating-a-personal-access-token-classic')
-    token = input('Enter your secure token: ')
 
     try:
-        authenticate_token(token)
+        authenticate_token(input('Enter your secure token: '))
     except GeneralException as e:
         print(e)
-        return
+        console_authenticate_token()
 
 
 def main() -> None:
     print('Github downloader v1.0 by revel111.')
 
     if not AUTH_FILE_PATH.exists():
-        print('No access token was provided.')
+        console_authenticate_token()
     else:
         try:
             gv.git = Github(read_credentials())
             gv.git.get_user().login
         except BadCredentialsException:
-            print('Invalid access token was provided.')
+            console_authenticate_token()
 
-    try:
-        main_menu()
-    except ConnectionError:
-        print('No connection with Github. Please check your network connection or try again later.')
+    main_menu()
 
 
 if __name__ == '__main__':
@@ -272,3 +264,5 @@ if __name__ == '__main__':
         main()
     except KeyboardInterrupt:
         print('Thank you for using this application.')
+    except ConnectionError:
+        print('No connection with Github. Please check your network connection or try again later.')
