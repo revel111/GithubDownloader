@@ -134,7 +134,7 @@ def search_location_by_link(link: str, name: str) -> str:
                 split = line.strip('\n').split(' ')
 
                 if ''.join(split[:-1]) == link:
-                   return split[-1]
+                    return split[-1]
             else:
                 raise gv.ErrorException(f'File "{name}" does not exist.')
     except FileNotFoundError:

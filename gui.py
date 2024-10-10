@@ -62,17 +62,20 @@ class AppearanceFrame(CTkFrame):
 class InputFrame(CTkFrame):
     def __init__(self, master, **kwargs):
         super().__init__(master, **kwargs)
+        self.grid_columnconfigure((0,), weight=1)
 
         self.entry = CTkEntry(master=self, placeholder_text='Enter a link')
         self.add_button = CTkButton(master=self, text='add', command=self.add_file_open_window)
+        self.update_button = CTkButton(master=self, text='update', command=poxuy)
         self.download_button = CTkButton(master=self, text='download',
                                          command=self.window_download_file_without_tracking)
         self.delete_button = CTkButton(master=self, text='delete', command=poxuy)
 
-        self.entry.grid(row=0, column=0, padx=10, pady=0, sticky='we')
-        self.add_button.grid(row=0, column=1, padx=10, pady=0, sticky='e')
-        self.download_button.grid(row=0, column=2, padx=10, pady=0, sticky='e')
-        self.delete_button.grid(row=0, column=3, padx=10, pady=0, sticky='e')
+        self.entry.grid(row=0, column=0, padx=10, pady=0, sticky='we', columnspan=1)
+        self.update_button.grid(row=0, column=1, padx=10, pady=0, sticky='e')
+        self.add_button.grid(row=0, column=2, padx=10, pady=0, sticky='e')
+        self.download_button.grid(row=0, column=3, padx=10, pady=0, sticky='e')
+        self.delete_button.grid(row=0, column=4, padx=10, pady=0, sticky='e')
 
         self.configure(fg_color='transparent')
 
@@ -136,8 +139,14 @@ class InputFrame(CTkFrame):
         except GeneralException as e:
             return define_exception(e, self)
 
+    def delete_file(self) -> None:
+        try:
+            owner_name, repo_name, branch, path = parse_link(self.entry.get())
+        except ValueError:
+            CTkMessagebox(master=self, title='Error', message='Wrong link format.', icon='cancel')
+            return
 
-# def delete_file(self) -> None:
+
 
 
 class App(CTk):
@@ -165,7 +174,7 @@ class App(CTk):
         self.menubar.add_cascade('Manual', self.open_manual)
 
         self.input_frame = InputFrame(master=self)
-        self.input_frame.grid(row=1, column=0, padx=0, pady=20, sticky='en')
+        self.input_frame.grid(row=1, column=0, padx=0, pady=20, sticky='wen')
 
         self.appearance_frame = AppearanceFrame(master=self)
         self.appearance_frame.grid(row=5, column=0, rowspan=4, sticky="nsew")
