@@ -7,7 +7,8 @@ from CTkMessagebox import CTkMessagebox
 from customtkinter import CTk, CTkButton, CTkToplevel, CTkFrame, CTkLabel, CTkEntry, CTkInputDialog, CTkOptionMenu
 from github import Github
 
-from funcs import validate_data, define_exception, save_tracked_file, download_file
+from funcs import validate_data, define_exception, save_tracked_file, download_file, delete_tracked_file, \
+    search_location_by_link
 from global_variables import GeneralException, DOWNLOADED_DIRECTORY_PATH
 from main import return_manual, parse_link, validate_path
 
@@ -66,10 +67,10 @@ class InputFrame(CTkFrame):
 
         self.entry = CTkEntry(master=self, placeholder_text='Enter a link')
         self.add_button = CTkButton(master=self, text='add', command=self.add_file_open_window)
-        self.update_button = CTkButton(master=self, text='update', command=poxuy)
+        self.update_button = CTkButton(master=self, text='update', command=self.window_update_file)
         self.download_button = CTkButton(master=self, text='download',
                                          command=self.window_download_file_without_tracking)
-        self.delete_button = CTkButton(master=self, text='delete', command=poxuy)
+        self.delete_button = CTkButton(master=self, text='delete', command=self.window_delete_file)
 
         self.entry.grid(row=0, column=0, padx=10, pady=0, sticky='we', columnspan=1)
         self.update_button.grid(row=0, column=1, padx=10, pady=0, sticky='e')
@@ -139,14 +140,45 @@ class InputFrame(CTkFrame):
         except GeneralException as e:
             return define_exception(e, self)
 
-    def delete_file(self) -> None:
+    def window_delete_file(self) -> None:
         try:
             owner_name, repo_name, branch, path = parse_link(self.entry.get())
         except ValueError:
             CTkMessagebox(master=self, title='Error', message='Wrong link format.', icon='cancel')
             return
 
+        try:
+            delete_tracked_file(f'{owner_name}{repo_name}{branch}{path}', path.split('/')[-1])
+        except GeneralException as e:
+            define_exception(e, self)
+            return
 
+        CTkMessagebox(title='Success',
+                      message=f'File "{path}" was successfully deleted from the list of tracked files.',
+                      icon='check')
+
+    def window_update_file(self) -> None:
+        try:
+            owner_name, repo_name, branch, path = parse_link(self.entry.get())
+        except ValueError:
+            CTkMessagebox(master=self, title='Error', message='Wrong link format.', icon='cancel')
+            return
+
+        try:
+            location = search_location_by_link(f'{owner_name}{repo_name}{branch}{path}', path.split('/')[-1])
+        except GeneralException as e:
+            define_exception(e, self)
+            return
+
+        try:
+            download_file(owner_name, repo_name, branch, path, location)
+        except GeneralException as e:
+            define_exception(e, self)
+            return
+
+        CTkMessagebox(title='Success',
+                      message=f'File "{path}" was successfully updated.',
+                      icon='check')
 
 
 class App(CTk):
@@ -155,6 +187,7 @@ class App(CTk):
 
         self.geometry(center_window(self, self._get_window_scaling()))
         self.title("GitHub downloader")
+        self.iconbitmap('installation/logo.ico')
         customtkinter.set_appearance_mode("dark")
 
         # self.main_frame = customtkinter.CTkFrame(master=self)
