@@ -63,7 +63,7 @@ def fabricate_links() -> list[list[str]]:
             read_tracked_files()]
 
 
-def check_download(owner_name: str, repo_name: str, branch: str, path: str, location: Path) -> bool:
+def check_download(owner_name: str, repo_name: str, branch: str, path: str, location: str) -> bool:
     location = Path(location)
 
     if not location.exists():
@@ -171,7 +171,7 @@ def authenticate_token(token: str) -> None:
     try:
         gv.git = Github(token)
         gv.git.get_user().login
-    except BadCredentialsException:
+    except (BadCredentialsException | AssertionError):
         raise gv.ErrorException('You entered invalid secure token. Try again.\n')
     except ConnectionError:
         raise gv.WarningException('No connection with Github. Please check your network connection or try again later.')

@@ -5,14 +5,13 @@ import customtkinter
 from CTkMenuBar import CTkMenuBar
 from CTkMessagebox import CTkMessagebox
 from customtkinter import CTk, CTkButton, CTkToplevel, CTkFrame, CTkLabel, CTkEntry, CTkInputDialog, CTkOptionMenu
-from github import Github
+from github import Github, BadCredentialsException
 
 from funcs import validate_data, define_exception, save_tracked_file, download_file, delete_tracked_file, \
-    search_location_by_link
+    search_location_by_link, authenticate_token, read_credentials
 from global_variables import GeneralException, DOWNLOADED_DIRECTORY_PATH
 from main import return_manual, parse_link, validate_path
-
-git = Github()
+import global_variables as gv
 
 
 class ManualWindow(CTkToplevel):
@@ -63,20 +62,20 @@ class AppearanceFrame(CTkFrame):
 class InputFrame(CTkFrame):
     def __init__(self, master, **kwargs):
         super().__init__(master, **kwargs)
-        self.grid_columnconfigure((0,), weight=1)
+        self.grid_columnconfigure(0, weight=1)
 
         self.entry = CTkEntry(master=self, placeholder_text='Enter a link')
-        self.add_button = CTkButton(master=self, text='add', command=self.add_file_open_window)
-        self.update_button = CTkButton(master=self, text='update', command=self.window_update_file)
+        self.add_button = CTkButton(master=self, text='add', command=self.add_file_open_window, width=70)
+        self.update_button = CTkButton(master=self, text='update', command=self.window_update_file, width=70)
         self.download_button = CTkButton(master=self, text='download',
-                                         command=self.window_download_file_without_tracking)
-        self.delete_button = CTkButton(master=self, text='delete', command=self.window_delete_file)
+                                         command=self.window_download_file_without_tracking, width=70)
+        self.delete_button = CTkButton(master=self, text='delete', command=self.window_delete_file, width=70)
 
-        self.entry.grid(row=0, column=0, padx=10, pady=0, sticky='we', columnspan=1)
-        self.update_button.grid(row=0, column=1, padx=10, pady=0, sticky='e')
-        self.add_button.grid(row=0, column=2, padx=10, pady=0, sticky='e')
-        self.download_button.grid(row=0, column=3, padx=10, pady=0, sticky='e')
-        self.delete_button.grid(row=0, column=4, padx=10, pady=0, sticky='e')
+        self.entry.grid(row=0, column=0, padx=10, pady=0, sticky='we', columnspan=3)
+        self.update_button.grid(row=0, column=3, padx=5, pady=0, sticky='e')
+        self.add_button.grid(row=0, column=4, padx=5, pady=0, sticky='e')
+        self.download_button.grid(row=0, column=5, padx=5, pady=0, sticky='e')
+        self.delete_button.grid(row=0, column=6, padx=5, pady=0, sticky='e')
 
         self.configure(fg_color='transparent')
 
@@ -203,7 +202,7 @@ class App(CTk):
         self.menubar = CTkMenuBar(master=self)
         self.menubar.grid(row=0, column=0, padx=0, pady=0, sticky='we')
 
-        self.menubar.add_cascade('Credentials', self.open_authentication)
+        self.menubar.add_cascade('Credentials', lambda: self.open_authentication(self))
         self.menubar.add_cascade('Manual', self.open_manual)
 
         self.input_frame = InputFrame(master=self)
@@ -222,12 +221,34 @@ class App(CTk):
             self.toplevel_window.focus_force()
 
     @staticmethod
-    def open_authentication() -> None:
+    def open_authentication(master: CTk) -> None:
         token_input = CTkInputDialog(
             text='''Read about personal access token here and generate it to start use this application.
                     Link: https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens#creating-a-personal-access-token-classic''',
             title='Authentication')
-        # print(token_input.get_input())
+        token = token_input.get_input()
+
+        # if token is NoneType or token is None:
+        #     try:
+        #         gv.git = Github(read_credentials())
+        #         gv.git.get_user().login
+        #     except BadCredentialsException:
+        #         App.open_authentication(master)
+        #         return
+
+        try:
+            authenticate_token(token)
+        except GeneralException as e:
+            message = define_exception(e, master)
+
+            if message is NoneType or message.get():
+                App.open_authentication(master)
+
+            return
+
+        CTkMessagebox(title='Success',
+                      message=f'Token was successfully updated.',
+                      icon='check')
 
 
 # credits to this young man: https://github.com/TomSchimansky/CustomTkinter/discussions/1820
@@ -252,6 +273,7 @@ def app_creator() -> CTk:
 
 def main() -> None:
     app = app_creator()
+    # App.open_authentication(app)
     app.mainloop()
 
 
