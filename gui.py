@@ -4,11 +4,13 @@ from types import NoneType
 import customtkinter
 from CTkMenuBar import CTkMenuBar
 from CTkMessagebox import CTkMessagebox
-from customtkinter import CTk, CTkButton, CTkToplevel, CTkFrame, CTkLabel, CTkEntry, CTkInputDialog, CTkOptionMenu
+from CTkTable import CTkTable
+from customtkinter import CTk, CTkButton, CTkToplevel, CTkFrame, CTkLabel, CTkEntry, CTkInputDialog, CTkOptionMenu, \
+    CTkScrollableFrame
 from github import Github, BadCredentialsException
 
 from funcs import validate_data, define_exception, save_tracked_file, download_file, delete_tracked_file, \
-    search_location_by_link, authenticate_token, read_credentials
+    search_location_by_link, authenticate_token, read_credentials, fabricate_links
 from global_variables import GeneralException, DOWNLOADED_DIRECTORY_PATH
 from main import return_manual, parse_link, validate_path
 import global_variables as gv
@@ -60,12 +62,12 @@ class AppearanceFrame(CTkFrame):
 
 
 class InputFrame(CTkFrame):
-    def __init__(self, master, **kwargs):
+    def __init__(self, master, table, **kwargs):
         super().__init__(master, **kwargs)
         self.grid_columnconfigure(0, weight=1)
 
         self.entry = CTkEntry(master=self, placeholder_text='Enter a link')
-        self.add_button = CTkButton(master=self, text='add', command=self.add_file_open_window, width=70)
+        self.add_button = CTkButton(master=self, text='add', command=lambda: self.add_file_open_window(table), width=70)
         self.update_button = CTkButton(master=self, text='update', command=self.window_update_file, width=70)
         self.download_button = CTkButton(master=self, text='download',
                                          command=self.window_download_file_without_tracking, width=70)
@@ -79,15 +81,16 @@ class InputFrame(CTkFrame):
 
         self.configure(fg_color='transparent')
 
-    def add_file_open_window(self) -> None:
+    def add_file_open_window(self, table: CTkTable) -> None:
         try:
             owner_name, repo_name, branch, path, location, location_warning = self.ask_user_for_data()
         except TypeError:
             return
 
         save_tracked_file(owner_name, repo_name, branch, path, location)
+        table.add_row(['fuck', location], len(table.values))
 
-        if location is NoneType or location_warning.get():
+        if location is NoneType or location_warning is None or location_warning is NoneType or location_warning.get():
             CTkMessagebox(title='Success',
                           message=f'File "{path}" was successfully added to the list of tracked files.',
                           icon='check')
@@ -180,6 +183,19 @@ class InputFrame(CTkFrame):
                       icon='check')
 
 
+class TableFrame(CTkScrollableFrame):
+    def __init__(self, master, **kwargs):
+        super().__init__(master, **kwargs)
+
+        try:
+            links = fabricate_links()
+            self.table = CTkTable(master=self, row=len(links), column=2, values=links)
+        except FileNotFoundError:
+            self.table = CTkTable(master=self, row=0, column=2, values=[])
+        self.table.add_row(['Link', 'Path'], 0)
+        self.table.grid(row=0, column=0, padx=10, pady=0, sticky='nsew', columnspan=5)
+
+
 class App(CTk):
     def __init__(self):
         super().__init__()
@@ -205,14 +221,17 @@ class App(CTk):
         self.menubar.add_cascade('Credentials', lambda: self.open_authentication(self))
         self.menubar.add_cascade('Manual', self.open_manual)
 
-        self.input_frame = InputFrame(master=self)
-        self.input_frame.grid(row=1, column=0, padx=0, pady=20, sticky='wen')
+        self.table = TableFrame(master=self)
+        self.table.grid(row=2, column=0, rowspan=4, sticky="nsew")
 
         self.appearance_frame = AppearanceFrame(master=self)
-        self.appearance_frame.grid(row=5, column=0, rowspan=4, sticky="nsew")
-        # self.appearance_frame.grid_rowconfigure(4, weight=1)
-        self.toplevel_window = None
+        self.appearance_frame.grid(row=7, column=0, rowspan=4, sticky="nsew")
 
+        self.input_frame = InputFrame(master=self, table=self.table.table)
+        self.input_frame.grid(row=1, column=0, padx=0, pady=20, sticky='wen')
+        # self.appearance_frame.grid_rowconfigure(4, weight=1)
+
+        self.toplevel_window = None
         self.authenticate_on_start()
 
     def open_manual(self) -> None:
@@ -271,7 +290,7 @@ class App(CTk):
 
 
 # credits to this young man: https://github.com/TomSchimansky/CustomTkinter/discussions/1820
-def center_window(window: App | ManualWindow, scaling: float, width=800, height=600) -> str:
+def center_window(window: App | ManualWindow, scaling: float, width=1024, height=786) -> str:
     screen_width = window.winfo_screenwidth()
     screen_height = window.winfo_screenheight()
 

@@ -42,8 +42,9 @@ def parse_link(link: str) -> tuple[str, str, str, str]:
         raise ValueError
 
 
+# TODO
 def validate_path(path: Path) -> Path:
-    if not path.exists() or not path.is_dir():
+    if not path.exists() or not path.is_dir() or path == '.':
         path = DOWNLOADED_DIRECTORY_PATH
 
     return path
