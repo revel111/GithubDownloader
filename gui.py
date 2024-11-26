@@ -186,7 +186,7 @@ class App(CTk):
 
         self.geometry(center_window(self, self._get_window_scaling()))
         self.title("GitHub downloader")
-        self.iconbitmap('installation/logo.ico')
+        # self.iconbitmap('installation/logo.ico')
         customtkinter.set_appearance_mode("dark")
 
         # self.main_frame = customtkinter.CTkFrame(master=self)
@@ -213,12 +213,24 @@ class App(CTk):
         # self.appearance_frame.grid_rowconfigure(4, weight=1)
         self.toplevel_window = None
 
+        self.authenticate_on_start()
+
     def open_manual(self) -> None:
         if (self.toplevel_window is None or
                 not self.toplevel_window.winfo_exists()):
             self.toplevel_window = ManualWindow(self)
         else:
             self.toplevel_window.focus_force()
+
+    def authenticate_on_start(self) -> None:
+        if not gv.AUTH_FILE_PATH.exists():
+            App.open_authentication(self)
+        else:
+            try:
+                gv.git = Github(read_credentials())
+                gv.git.get_user().login
+            except BadCredentialsException:
+                App.open_authentication(self)
 
     @staticmethod
     def open_authentication(master: CTk) -> None:
@@ -228,23 +240,30 @@ class App(CTk):
             title='Authentication')
         token = token_input.get_input()
 
-        # if token is NoneType or token is None:
-        #     try:
-        #         gv.git = Github(read_credentials())
-        #         gv.git.get_user().login
-        #     except BadCredentialsException:
-        #         App.open_authentication(master)
-        #         return
+        if token is NoneType or token is None and gv.AUTH_FILE_PATH.exists():
+            try:
+                gv.git = Github(read_credentials())
+                gv.git.get_user().login
+                return
+            except BadCredentialsException:
+                message = CTkMessagebox(title='Error',
+                                        message='You entered invalid secure token.',
+                                        icon='Cancel')
 
-        try:
-            authenticate_token(token)
-        except GeneralException as e:
-            message = define_exception(e, master)
+                if message is NoneType or message.get():
+                    App.open_authentication(master)
 
-            if message is NoneType or message.get():
-                App.open_authentication(master)
+                return
+        else:
+            try:
+                authenticate_token(token)
+            except GeneralException as e:
+                message = define_exception(e, master)
 
-            return
+                if message is NoneType or message.get():
+                    App.open_authentication(master)
+
+                return
 
         CTkMessagebox(title='Success',
                       message=f'Token was successfully updated.',
@@ -273,9 +292,11 @@ def app_creator() -> CTk:
 
 def main() -> None:
     app = app_creator()
-    # App.open_authentication(app)
     app.mainloop()
 
 
 if __name__ == '__main__':
-    main()
+    try:
+        main()
+    except KeyboardInterrupt:
+        print('Thank you for using this application.')

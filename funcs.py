@@ -4,6 +4,7 @@ import re
 import textwrap
 from datetime import datetime, timezone
 from pathlib import Path
+from types import NoneType
 
 from CTkMessagebox import CTkMessagebox
 from github import Github, BadCredentialsException, UnknownObjectException, GithubException
@@ -168,10 +169,13 @@ def delete_tracked_file(line_to_delete: str, name: str) -> None:
 
 
 def authenticate_token(token: str) -> None:
+    if token is NoneType or token is None or len(token) == 0:
+        raise gv.ErrorException('You entered invalid secure token. Try again.\n')
+
     try:
         gv.git = Github(token)
         gv.git.get_user().login
-    except (BadCredentialsException | AssertionError):
+    except BadCredentialsException:
         raise gv.ErrorException('You entered invalid secure token. Try again.\n')
     except ConnectionError:
         raise gv.WarningException('No connection with Github. Please check your network connection or try again later.')

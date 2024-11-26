@@ -1,4 +1,7 @@
 /venv/
 /dist/
 /build/
-main.spec
+mains.spec
+data/
+downloaded/
+log.txt
