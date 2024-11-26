@@ -78,9 +78,8 @@ def delete_tracked_file_by_index() -> None:
 
     try:
         ch = int(input('Type index of file you want to delete: '))
-        print(delete_tracked_file(f'{files[ch][0]}{files[ch][1]}{files[ch][2]}{files[ch][3]}', files[ch][3]))
-    except GeneralException as e:
-        print(e)
+        result, index = delete_tracked_file(f'{files[ch][0]}{files[ch][1]}{files[ch][2]}{files[ch][3]}', files[ch][3])
+        print(result)
     except (IndexError, ValueError):
         print('Wrong input.')
 
@@ -173,10 +172,8 @@ def delete_tracked_file_by_link(link: str) -> None:
     except ValueError:
         raise gv.WarningException('Wrong input.')
 
-    try:
-        delete_tracked_file(f'{owner_name}{repo_name}{branch}{path}', path.split('/')[-1])
-    except GeneralException as e:
-        print(e)
+    result, index = delete_tracked_file(f'{owner_name}{repo_name}{branch}{path}', path.split('/')[-1])
+    print(result)
 
 
 def manual() -> None:

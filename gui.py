@@ -71,7 +71,8 @@ class InputFrame(CTkFrame):
         self.update_button = CTkButton(master=self, text='update', command=self.window_update_file, width=70)
         self.download_button = CTkButton(master=self, text='download',
                                          command=self.window_download_file_without_tracking, width=70)
-        self.delete_button = CTkButton(master=self, text='delete', command=self.window_delete_file, width=70)
+        self.delete_button = CTkButton(master=self, text='delete', command=lambda: self.window_delete_file(table),
+                                       width=70)
 
         self.entry.grid(row=0, column=0, padx=10, pady=0, sticky='we', columnspan=3)
         self.update_button.grid(row=0, column=3, padx=5, pady=0, sticky='e')
@@ -142,21 +143,27 @@ class InputFrame(CTkFrame):
         except GeneralException as e:
             return define_exception(e, self)
 
-    def window_delete_file(self) -> None:
+    def window_delete_file(self, table: CTkTable) -> None:
         try:
             owner_name, repo_name, branch, path = parse_link(self.entry.get())
         except ValueError:
-            CTkMessagebox(master=self, title='Error', message='Wrong link format.', icon='cancel')
+            CTkMessagebox(master=self,
+                          title='Error',
+                          message='Wrong link format.',
+                          icon='cancel')
             return
 
-        try:
-            delete_tracked_file(f'{owner_name}{repo_name}{branch}{path}', path.split('/')[-1])
-        except GeneralException as e:
-            define_exception(e, self)
+        result, index = delete_tracked_file(f'{owner_name}{repo_name}{branch}{path}', path.split('/')[-1])
+        if index == -1:
+            CTkMessagebox(master=self,
+                          title='Error',
+                          message=result,
+                          icon='cancel')
             return
 
+        table.delete_row(index + 1)
         CTkMessagebox(title='Success',
-                      message=f'File "{path}" was successfully deleted from the list of tracked files.',
+                      message=result,
                       icon='check')
 
     def window_update_file(self) -> None:

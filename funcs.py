@@ -42,7 +42,6 @@ def parse_link(link: str) -> tuple[str, str, str, str]:
         raise ValueError
 
 
-# TODO
 def validate_path(path: Path) -> Path:
     if not path.exists() or not path.is_dir() or str(path) == '.' or str(path) == '..':
         path = DOWNLOADED_DIRECTORY_PATH
@@ -61,8 +60,9 @@ def read_tracked_files() -> list[list[str]]:
 
 
 def fabricate_links() -> list[list[str]]:
-    return [[str_to_link(line[0],line[1], line[2], line[3]), line[4]] for line in
+    return [[str_to_link(line[0], line[1], line[2], line[3]), line[4]] for line in
             read_tracked_files()]
+
 
 def str_to_link(owner_name: str, repo_name: str, branch: str, path: str) -> str:
     return f'https://github.com/{owner_name}/{repo_name}/blob/{branch}/{path}'
@@ -146,28 +146,25 @@ def search_location_by_link(link: str, name: str) -> str:
         raise gv.WarningException('No files are currently being tracked.')
 
 
-def delete_tracked_file(line_to_delete: str, name: str) -> None:
+def delete_tracked_file(line_to_delete: str, name: str) -> tuple[str, int]:
     try:
         with open(FILES_FILE_PATH, 'r+') as file:
-            flag = False
+            found = -1
             lines = file.readlines()
             file.seek(0)
 
             if len(lines) == 0:
                 raise FileNotFoundError
 
-            for line in lines:
+            for i, line in enumerate(lines):
                 if ''.join(line.strip('\n').split(' ')[:-1]) != line_to_delete:
                     file.write(line)
                 else:
-                    flag = True
+                    found = i
 
             file.truncate()
 
-            if flag:
-                raise gv.SuccessException(f'File "{name}" was deleted.')
-            else:
-                raise gv.ErrorException(f'File "{name}" does not exist.')
+            return (f'File "{name}" does not exist.', found) if found == -1 else (f'File "{name}" was deleted.', found)
     except FileNotFoundError:
         raise gv.WarningException('No files are currently being tracked.')
 
