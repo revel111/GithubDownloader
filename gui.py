@@ -10,7 +10,7 @@ from customtkinter import CTk, CTkButton, CTkToplevel, CTkFrame, CTkLabel, CTkEn
 from github import Github, BadCredentialsException
 
 from funcs import validate_data, define_exception, save_tracked_file, download_file, delete_tracked_file, \
-    search_location_by_link, authenticate_token, read_credentials, fabricate_links
+    search_location_by_link, authenticate_token, read_credentials, fabricate_links, str_to_link
 from global_variables import GeneralException, DOWNLOADED_DIRECTORY_PATH
 from main import return_manual, parse_link, validate_path
 import global_variables as gv
@@ -88,7 +88,7 @@ class InputFrame(CTkFrame):
             return
 
         save_tracked_file(owner_name, repo_name, branch, path, location)
-        table.add_row(['fuck', location], len(table.values))
+        table.add_row([str_to_link(owner_name, repo_name, branch, path), location], len(table.values))
 
         if location is NoneType or location_warning is None or location_warning is NoneType or location_warning.get():
             CTkMessagebox(title='Success',
@@ -192,7 +192,7 @@ class TableFrame(CTkScrollableFrame):
             self.table = CTkTable(master=self, row=len(links), column=2, values=links)
         except FileNotFoundError:
             self.table = CTkTable(master=self, row=0, column=2, values=[])
-        self.table.add_row(['Link', 'Path'], 0)
+        self.table.add_row(['Link', 'Stored'], 0)
         self.table.grid(row=0, column=0, padx=10, pady=0, sticky='nsew', columnspan=5)
 
 

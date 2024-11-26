@@ -44,7 +44,7 @@ def parse_link(link: str) -> tuple[str, str, str, str]:
 
 # TODO
 def validate_path(path: Path) -> Path:
-    if not path.exists() or not path.is_dir() or path == '.':
+    if not path.exists() or not path.is_dir() or str(path) == '.' or str(path) == '..':
         path = DOWNLOADED_DIRECTORY_PATH
 
     return path
@@ -61,8 +61,11 @@ def read_tracked_files() -> list[list[str]]:
 
 
 def fabricate_links() -> list[list[str]]:
-    return [[f'https://github.com/{line[0]}/{line[1]}/blob/{line[2]}/{line[3]}', line[4]] for line in
+    return [[str_to_link(line[0],line[1], line[2], line[3]), line[4]] for line in
             read_tracked_files()]
+
+def str_to_link(owner_name: str, repo_name: str, branch: str, path: str) -> str:
+    return f'https://github.com/{owner_name}/{repo_name}/blob/{branch}/{path}'
 
 
 def check_download(owner_name: str, repo_name: str, branch: str, path: str, location: str) -> bool:
