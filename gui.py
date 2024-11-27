@@ -5,8 +5,10 @@ import customtkinter
 from CTkMenuBar import CTkMenuBar
 from CTkMessagebox import CTkMessagebox
 from CTkTable import CTkTable
+from PIL import Image
 from customtkinter import CTk, CTkButton, CTkToplevel, CTkFrame, CTkLabel, CTkEntry, CTkInputDialog, CTkOptionMenu, \
-    CTkScrollableFrame
+    CTkScrollableFrame, CTkTextbox, CTkImage
+from docutils.nodes import label
 from github import Github, BadCredentialsException
 
 from funcs import validate_data, define_exception, save_tracked_file, download_file, delete_tracked_file, \
@@ -211,7 +213,6 @@ class App(CTk):
         self.title("GitHub downloader")
         # self.iconbitmap('installation/logo.ico')
         customtkinter.set_appearance_mode("dark")
-
         # self.main_frame = customtkinter.CTkFrame(master=self)
         # self.main_frame.grid(row=0, column=0)
 
@@ -220,23 +221,36 @@ class App(CTk):
         # height = self.main_frame.winfo_height()
         # self.geometry(f"{width}x{height}")
 
+        # self.grid_rowconfigure(0, weight=0)
+        # self.grid_rowconfigure(1, weight=0)
+        # self.grid_rowconfigure(2, weight=0)
+        self.grid_rowconfigure(3, weight=1)
+        # self.grid_rowconfigure(4, weight=0)
+        # self.grid_rowconfigure(5, weight=0)
         self.grid_columnconfigure(0, weight=1)
 
         self.menubar = CTkMenuBar(master=self)
         self.menubar.grid(row=0, column=0, padx=0, pady=0, sticky='we')
-
-        self.menubar.add_cascade('Credentials', lambda: self.open_authentication(self))
+        self.menubar.add_cascade('Credentials', lambda: self.open_authentication())
         self.menubar.add_cascade('Manual', self.open_manual)
 
-        self.table = TableFrame(master=self)
-        self.table.grid(row=2, column=0, rowspan=4, sticky="nsew")
+        self.login = CTkTextbox(master=self, height=30, width=200, corner_radius=5)
+        self.login.grid(row=1, column=0, sticky='w', padx=40, pady=5)
 
-        self.appearance_frame = AppearanceFrame(master=self)
-        self.appearance_frame.grid(row=7, column=0, rowspan=4, sticky="nsew")
+        image = CTkImage(light_image=Image.open('resources/profile_black.png'),
+                         dark_image=Image.open('resources/profile_white.png'),
+                         size=(30, 30))
+        self.label = CTkLabel(self, image=image, text='')
+        self.label.grid(row=1, column=0, sticky='w', padx=5, pady=5)
+
+        self.table = TableFrame(master=self)
+        self.table.grid(row=3, column=0, padx=5, pady=5, sticky="nsew")
 
         self.input_frame = InputFrame(master=self, table=self.table.table)
-        self.input_frame.grid(row=1, column=0, padx=0, pady=20, sticky='wen')
-        # self.appearance_frame.grid_rowconfigure(4, weight=1)
+        self.input_frame.grid(row=2, column=0, pady=5, sticky='ew')
+
+        self.appearance_frame = AppearanceFrame(master=self)
+        self.appearance_frame.grid(row=5, column=0, padx=5, pady=5, sticky="ew")
 
         self.toplevel_window = None
         self.authenticate_on_start()
@@ -250,16 +264,21 @@ class App(CTk):
 
     def authenticate_on_start(self) -> None:
         if not gv.AUTH_FILE_PATH.exists():
-            App.open_authentication(self)
+            self.open_authentication()
         else:
             try:
                 gv.git = Github(read_credentials())
                 gv.git.get_user().login
+                self.show_login()
             except BadCredentialsException:
-                App.open_authentication(self)
+                self.open_authentication()
 
-    @staticmethod
-    def open_authentication(master: CTk) -> None:
+    def show_login(self):
+        self.login.configure(state='normal')
+        self.login.insert("0.0", f'Logged in as {gv.git.get_user().login}')
+        self.login.configure(state='disabled')
+
+    def open_authentication(self) -> None:
         token_input = CTkInputDialog(
             text='''Read about personal access token here and generate it to start use this application.
                     Link: https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens#creating-a-personal-access-token-classic''',
@@ -270,30 +289,27 @@ class App(CTk):
             try:
                 gv.git = Github(read_credentials())
                 gv.git.get_user().login
-                return
             except BadCredentialsException:
                 message = CTkMessagebox(title='Error',
                                         message='You entered invalid secure token.',
                                         icon='Cancel')
 
                 if message is NoneType or message.get():
-                    App.open_authentication(master)
-
-                return
+                    self.open_authentication()
         else:
             try:
                 authenticate_token(token)
+
             except GeneralException as e:
-                message = define_exception(e, master)
+                message = define_exception(e, self)
 
                 if message is NoneType or message.get():
-                    App.open_authentication(master)
-
-                return
+                    self.open_authentication()
 
         CTkMessagebox(title='Success',
                       message=f'Token was successfully updated.',
                       icon='check')
+        self.show_login()
 
 
 # credits to this young man: https://github.com/TomSchimansky/CustomTkinter/discussions/1820
