@@ -1,7 +1,7 @@
 import textwrap
 from pathlib import Path
 
-from github import Github, BadCredentialsException, GithubException
+from github import Github, BadCredentialsException
 from requests.exceptions import ConnectionError
 from tabulate import tabulate
 
@@ -242,7 +242,7 @@ def console_authenticate_token() -> None:
 
 
 def main() -> None:
-    print('Github downloader v1.0 by revel111.')
+    print('Github downloader v2.0 by revel111.')
 
     if not AUTH_FILE_PATH.exists():
         console_authenticate_token()

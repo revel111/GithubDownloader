@@ -8,14 +8,13 @@ from CTkTable import CTkTable
 from PIL import Image
 from customtkinter import CTk, CTkButton, CTkToplevel, CTkFrame, CTkLabel, CTkEntry, CTkInputDialog, CTkOptionMenu, \
     CTkScrollableFrame, CTkTextbox, CTkImage
-from docutils.nodes import label
 from github import Github, BadCredentialsException
 
+import global_variables as gv
 from funcs import validate_data, define_exception, save_tracked_file, download_file, delete_tracked_file, \
     search_location_by_link, authenticate_token, read_credentials, fabricate_links, str_to_link
 from global_variables import GeneralException, DOWNLOADED_DIRECTORY_PATH
 from main import return_manual, parse_link, validate_path
-import global_variables as gv
 
 
 class ManualWindow(CTkToplevel):
@@ -204,6 +203,11 @@ class TableFrame(CTkScrollableFrame):
         self.table.add_row(['Link', 'Stored'], 0)
         self.table.grid(row=0, column=0, padx=10, pady=0, sticky='nsew', columnspan=5)
 
+        self.grid_columnconfigure(0, weight=1)
+        self.grid_columnconfigure(1, weight=1)
+
+        self.grid_rowconfigure(0, weight=1)
+
 
 class App(CTk):
     def __init__(self):
@@ -221,12 +225,7 @@ class App(CTk):
         # height = self.main_frame.winfo_height()
         # self.geometry(f"{width}x{height}")
 
-        # self.grid_rowconfigure(0, weight=0)
-        # self.grid_rowconfigure(1, weight=0)
-        # self.grid_rowconfigure(2, weight=0)
         self.grid_rowconfigure(3, weight=1)
-        # self.grid_rowconfigure(4, weight=0)
-        # self.grid_rowconfigure(5, weight=0)
         self.grid_columnconfigure(0, weight=1)
 
         self.menubar = CTkMenuBar(master=self)
@@ -342,3 +341,7 @@ if __name__ == '__main__':
         main()
     except KeyboardInterrupt:
         print('Thank you for using this application.')
+    except ConnectionError:
+        CTkMessagebox(title='Error',
+                      message='No connection with Github. Please check your network connection or try again later.',
+                      icon='cancel')

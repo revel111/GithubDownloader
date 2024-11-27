@@ -7,10 +7,11 @@ from pathlib import Path
 from types import NoneType
 
 from CTkMessagebox import CTkMessagebox
+from customtkinter import CTkFrame, CTk
 from github import Github, BadCredentialsException, UnknownObjectException, GithubException
 
 import global_variables as gv
-from global_variables import FILES_FILE_PATH, AUTH_FILE_PATH, DOWNLOADED_DIRECTORY_PATH
+from global_variables import FILES_FILE_PATH, AUTH_FILE_PATH, DOWNLOADED_DIRECTORY_PATH, GeneralException
 
 
 def return_manual() -> str:
@@ -117,8 +118,12 @@ def download_file(owner_name: str, repo_name: str, branch: str, path: str, locat
     DOWNLOADED_DIRECTORY_PATH.mkdir(exist_ok=True)
 
     if location.exists() and location.is_dir():
-        with open(location / name, 'w') as file:
-            file.write(content)
+        try:
+            with open(location / name, 'w') as file:
+                file.write(content)
+        except Exception:
+            raise gv.ErrorException('Unsupported type of file was tried to be downloaded.')
+
         raise gv.SuccessException(f'File "{path}" was downloaded into "{location}".')
     else:
         with open(DOWNLOADED_DIRECTORY_PATH / name, 'w') as file:
@@ -218,7 +223,7 @@ def save_tracked_file(owner_name: str, repo_name: str, branch: str, path: str, l
         file.write(f'{owner_name} {repo_name} {branch} {path} {location}\n')
 
 
-def define_exception(exception, master) -> CTkMessagebox:
+def define_exception(exception: GeneralException, master: CTkFrame | CTk) -> CTkMessagebox:
     icon = str
     title = str
 
