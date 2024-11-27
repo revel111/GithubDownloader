@@ -40,7 +40,7 @@ class AppearanceFrame(CTkFrame):
 
         self.appearance_mode_label = CTkLabel(self, text='Appearance Mode', anchor='w')
         self.appearance_mode_label.grid(row=0, column=0, padx=10, pady=(10, 0))
-        self.appearance_mode_option_menu = CTkOptionMenu(self, values=['Light', 'Dark', 'System'],
+        self.appearance_mode_option_menu = CTkOptionMenu(self, values=['Dark', 'Light', 'System'],
                                                          command=self.change_appearance_mode_event)
         self.appearance_mode_option_menu.grid(row=1, column=0, padx=20, pady=(10, 10))
 
@@ -62,13 +62,98 @@ class AppearanceFrame(CTkFrame):
         customtkinter.set_widget_scaling(new_scaling_float)
 
 
+class TableFrame(CTkScrollableFrame):
+    def __init__(self, master, **kwargs):
+        super().__init__(master, **kwargs)
+
+        self.row_buttons = {}
+
+        self.grid_columnconfigure(0, weight=1)
+        self.grid_columnconfigure(1, weight=1)
+        self.grid_columnconfigure(2, weight=1)
+
+        self.delete_button_image = CTkImage(
+            dark_image=Image.open('resources/delete_white.png'),
+            light_image=Image.open('resources/delete_black.png'),
+            size=(20, 20))
+        self.update_button_image = CTkImage(
+            dark_image=Image.open('resources/update_white.png'),
+            light_image=Image.open('resources/update_black.png'),
+            size=(20, 20))
+
+        try:
+            links = fabricate_links()
+            self.table = CTkTable(master=self, row=len(links), column=2, values=links)
+            self.initialize_buttons(links)
+        except FileNotFoundError:
+            self.table = CTkTable(master=self, row=0, column=2, values=[])
+        self.table.add_row(['Link', 'Stored'], 0)
+
+        self.table.grid(row=0, column=0, padx=10, pady=0, sticky='nsew', columnspan=5)
+
+        # self.grid_rowconfigure(0, weight=1)
+
+    def initialize_buttons(self, links: list[list[str]]) -> None:
+        for i, link in enumerate(links, start=1):
+            owner_name, repo_name, branch, path = parse_link(link[0])
+            self.add_buttons(i, owner_name, repo_name, branch, path, link[1])
+
+    def change_indexes(self, index: int):
+        temp = dict()
+        for key, val in self.row_buttons.items():
+            if key >= index:
+                temp[key - 1] = 0
+            else:
+                temp[key] = val
+
+    def add_buttons(self, index: int, owner_name: str, repo_name: str, branch: str, path: str, location: str):
+        def wrap():
+            try:
+                download_file(owner_name, repo_name, branch, path, location)
+            except GeneralException as e:
+                define_exception(e, self.master.master.master)
+
+        update_button = CTkButton(master=self,
+                                  text="",
+                                  image=self.update_button_image,
+                                  height=30,
+                                  width=30,
+                                  command=lambda: wrap())
+        update_button.grid(row=index, column=1, padx=5, pady=5)
+
+        delete_button = CTkButton(master=self,
+                                  text="",
+                                  image=self.delete_button_image,
+                                  height=30,
+                                  width=30,
+                                  command=lambda: self.delete_buttons(index, owner_name, repo_name, branch, path,
+                                                                      path.split('/')[-1]))
+        delete_button.grid(row=index, column=2, padx=5, pady=5)
+
+        self.row_buttons[index] = [update_button, delete_button]
+
+    def delete_buttons(self, index: int, owner_name: str, repo_name: str, branch: str, path: str, name: str):
+        if index in self.row_buttons:
+            button1, button2 = self.row_buttons[index]
+            button1.destroy()
+            button2.destroy()
+            del self.row_buttons[index]
+            self.table.delete_row(index)
+            self.change_indexes(index)
+            try:
+                delete_tracked_file(f'{owner_name}{repo_name}{branch}{path}', name)
+            except GeneralException as e:
+                define_exception(e, self.master.master.master)
+
+
 class InputFrame(CTkFrame):
-    def __init__(self, master, table, **kwargs):
+    def __init__(self, master, table: TableFrame, **kwargs):
         super().__init__(master, **kwargs)
         self.grid_columnconfigure(0, weight=1)
 
         self.entry = CTkEntry(master=self, placeholder_text='Enter a link')
-        self.add_button = CTkButton(master=self, text='add', command=lambda: self.add_file_open_window(table), width=70)
+        self.add_button = CTkButton(master=self, text='add', command=lambda: self.add_file_open_window(table),
+                                    width=70)
         self.update_button = CTkButton(master=self, text='update', command=self.window_update_file, width=70)
         self.download_button = CTkButton(master=self, text='download',
                                          command=self.window_download_file_without_tracking, width=70)
@@ -83,14 +168,15 @@ class InputFrame(CTkFrame):
 
         self.configure(fg_color='transparent')
 
-    def add_file_open_window(self, table: CTkTable) -> None:
+    def add_file_open_window(self, table: TableFrame) -> None:
         try:
             owner_name, repo_name, branch, path, location, location_warning = self.ask_user_for_data()
         except TypeError:
             return
 
         save_tracked_file(owner_name, repo_name, branch, path, location)
-        table.add_row([str_to_link(owner_name, repo_name, branch, path), location], len(table.values))
+        table.table.add_row([str_to_link(owner_name, repo_name, branch, path), location], len(table.table.values))
+        table.add_buttons(len(table.table.values), owner_name, repo_name, branch, path, location)
 
         if location is NoneType or location_warning is None or location_warning is NoneType or location_warning.get():
             CTkMessagebox(title='Success',
@@ -106,13 +192,13 @@ class InputFrame(CTkFrame):
         try:
             owner_name, repo_name, branch, path = parse_link(self.entry.get())
         except ValueError:
-            CTkMessagebox(master=self, title='Error', message='Wrong link format.', icon='cancel')
+            CTkMessagebox(master=self.master, title='Error', message='Wrong link format.', icon='cancel')
             return
 
         try:
             validate_data(owner_name, repo_name, branch, path)
         except GeneralException as e:
-            define_exception(e, self)
+            define_exception(e, self.master)
             return
 
         location_input_dialog = CTkInputDialog(text='Enter a path where you want to store a file.', title='Path')
@@ -121,7 +207,7 @@ class InputFrame(CTkFrame):
 
         location_warning = None
         if location == DOWNLOADED_DIRECTORY_PATH:
-            location_warning = CTkMessagebox(master=self,
+            location_warning = CTkMessagebox(master=self.master,
                                              title='Warning',
                                              message=f'Location "{location_file}" does not exist. File will be stored in the "{DOWNLOADED_DIRECTORY_PATH}"',
                                              icon='warning')
@@ -142,71 +228,61 @@ class InputFrame(CTkFrame):
         try:
             download_file(owner_name, repo_name, branch, path, location)
         except GeneralException as e:
-            return define_exception(e, self)
+            return define_exception(e, self.master)
 
-    def window_delete_file(self, table: CTkTable) -> None:
+    def window_delete_file(self, table: TableFrame) -> None:
         try:
             owner_name, repo_name, branch, path = parse_link(self.entry.get())
         except ValueError:
-            CTkMessagebox(master=self,
+            CTkMessagebox(master=self.master,
                           title='Error',
                           message='Wrong link format.',
                           icon='cancel')
             return
 
-        result, index = delete_tracked_file(f'{owner_name}{repo_name}{branch}{path}', path.split('/')[-1])
+        try:
+            result, index = delete_tracked_file(f'{owner_name}{repo_name}{branch}{path}', path.split('/')[-1])
+        except GeneralException as e:
+            define_exception(e, self.master)
+            return
+
+        table.table.delete_row(index + 1)
+        table.delete_buttons(index, owner_name, repo_name, branch, path, path.split('/')[-1])
+
         if index == -1:
-            CTkMessagebox(master=self,
+            CTkMessagebox(master=self.master,
                           title='Error',
                           message=result,
                           icon='cancel')
-            return
-
-        table.delete_row(index + 1)
-        CTkMessagebox(title='Success',
-                      message=result,
-                      icon='check')
+        else:
+            CTkMessagebox(master=self.master,
+                          title='Success',
+                          message=result,
+                          icon='check')
 
     def window_update_file(self) -> None:
         try:
             owner_name, repo_name, branch, path = parse_link(self.entry.get())
         except ValueError:
-            CTkMessagebox(master=self, title='Error', message='Wrong link format.', icon='cancel')
+            CTkMessagebox(master=self.master, title='Error', message='Wrong link format.', icon='cancel')
             return
 
         try:
             location = search_location_by_link(f'{owner_name}{repo_name}{branch}{path}', path.split('/')[-1])
         except GeneralException as e:
-            define_exception(e, self)
+            define_exception(e, self.master)
             return
 
         try:
             download_file(owner_name, repo_name, branch, path, location)
         except GeneralException as e:
-            define_exception(e, self)
+            define_exception(e, self.master)
             return
 
-        CTkMessagebox(title='Success',
+        CTkMessagebox(master=self.master,
+                      title='Success',
                       message=f'File "{path}" was successfully updated.',
                       icon='check')
-
-
-class TableFrame(CTkScrollableFrame):
-    def __init__(self, master, **kwargs):
-        super().__init__(master, **kwargs)
-
-        try:
-            links = fabricate_links()
-            self.table = CTkTable(master=self, row=len(links), column=2, values=links)
-        except FileNotFoundError:
-            self.table = CTkTable(master=self, row=0, column=2, values=[])
-        self.table.add_row(['Link', 'Stored'], 0)
-        self.table.grid(row=0, column=0, padx=10, pady=0, sticky='nsew', columnspan=5)
-
-        self.grid_columnconfigure(0, weight=1)
-        self.grid_columnconfigure(1, weight=1)
-
-        self.grid_rowconfigure(0, weight=1)
 
 
 class App(CTk):
@@ -217,13 +293,6 @@ class App(CTk):
         self.title("GitHub downloader")
         # self.iconbitmap('installation/logo.ico')
         customtkinter.set_appearance_mode("dark")
-        # self.main_frame = customtkinter.CTkFrame(master=self)
-        # self.main_frame.grid(row=0, column=0)
-
-        # self.main_frame.update_idletasks()
-        # width = self.main_frame.winfo_width()
-        # height = self.main_frame.winfo_height()
-        # self.geometry(f"{width}x{height}")
 
         self.grid_rowconfigure(3, weight=1)
         self.grid_columnconfigure(0, weight=1)
@@ -245,7 +314,7 @@ class App(CTk):
         self.table = TableFrame(master=self)
         self.table.grid(row=3, column=0, padx=5, pady=5, sticky="nsew")
 
-        self.input_frame = InputFrame(master=self, table=self.table.table)
+        self.input_frame = InputFrame(master=self, table=self.table)
         self.input_frame.grid(row=2, column=0, pady=5, sticky='ew')
 
         self.appearance_frame = AppearanceFrame(master=self)
@@ -300,7 +369,7 @@ class App(CTk):
                 authenticate_token(token)
 
             except GeneralException as e:
-                message = define_exception(e, self)
+                message = define_exception(e, self.master)
 
                 if message is NoneType or message.get():
                     self.open_authentication()
@@ -320,10 +389,6 @@ def center_window(window: App | ManualWindow, scaling: float, width=1024, height
     y = int(((screen_height / 2) - (height / 1.5)) * scaling)
 
     return f"{width}x{height}+{x}+{y}"
-
-
-def poxuy():
-    print('poxuy')
 
 
 def app_creator() -> CTk:

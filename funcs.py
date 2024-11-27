@@ -4,6 +4,7 @@ import re
 import textwrap
 from datetime import datetime, timezone
 from pathlib import Path
+from tkinter import Misc
 from types import NoneType
 
 from CTkMessagebox import CTkMessagebox
@@ -223,7 +224,7 @@ def save_tracked_file(owner_name: str, repo_name: str, branch: str, path: str, l
         file.write(f'{owner_name} {repo_name} {branch} {path} {location}\n')
 
 
-def define_exception(exception: GeneralException, master: CTkFrame | CTk) -> CTkMessagebox:
+def define_exception(exception: GeneralException, master: CTkFrame | CTk | Misc) -> CTkMessagebox:
     icon = str
     title = str
 
