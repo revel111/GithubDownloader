@@ -75,20 +75,21 @@ class TableFrame(CTkScrollableFrame):
         self.delete_button_image = CTkImage(
             dark_image=Image.open('resources/delete_white.png'),
             light_image=Image.open('resources/delete_black.png'),
-            size=(20, 20))
+            size=(15, 15))
         self.update_button_image = CTkImage(
             dark_image=Image.open('resources/update_white.png'),
             light_image=Image.open('resources/update_black.png'),
-            size=(20, 20))
+            size=(15, 15))
 
         try:
             links = fabricate_links()
             self.table = CTkTable(master=self, row=len(links), column=2, values=links)
-            # self.initialize_buttons(links)
+            # self.table.delete_row(1)
+            self.initialize_buttons(links)
         except (FileNotFoundError, IndexError):
             self.table = CTkTable(master=self, row=0, column=2, values=[[]])
+            self.table.delete_row(1)
         self.table.add_row(['Link', 'Stored'], 0)
-        self.table.delete_row(1)
 
         self.table.grid(row=0, column=0, padx=10, pady=0, sticky='nsew')
 
@@ -97,7 +98,7 @@ class TableFrame(CTkScrollableFrame):
             owner_name, repo_name, branch, path = parse_link(link[0])
             self.add_buttons(i, owner_name, repo_name, branch, path, link[1])
 
-    def change_indexes(self, index: int):
+    def change_indexes(self, index: int) -> None:
         temp = dict()
         for key, val in self.row_buttons.items():
             if key >= index:
@@ -113,25 +114,26 @@ class TableFrame(CTkScrollableFrame):
                 define_exception(e, self.master.master.master)
 
         update_button = CTkButton(master=self,
-                                  text="",
+                                  text='',
                                   image=self.update_button_image,
                                   height=20,
                                   width=20,
                                   command=lambda: wrap())
-        update_button.grid(row=index, column=1, padx=5, pady=0)
+        update_button.grid(row=index, column=1, padx=5, pady=5)
 
         delete_button = CTkButton(master=self,
-                                  text="",
+                                  text='',
                                   image=self.delete_button_image,
                                   height=20,
                                   width=20,
                                   command=lambda: self.delete_buttons(index, owner_name, repo_name, branch, path,
                                                                       path.split('/')[-1]))
-        delete_button.grid(row=index, column=2, padx=5, pady=0)
+        delete_button.grid(row=index, column=2, padx=5, pady=5)
+        # self.grid_rowconfigure(index, weight=0, minsize=30)
 
         self.row_buttons[index] = [update_button, delete_button]
 
-    def delete_buttons(self, index: int, owner_name: str, repo_name: str, branch: str, path: str, name: str):
+    def delete_buttons(self, index: int, owner_name: str, repo_name: str, branch: str, path: str, name: str) -> None:
         if index in self.row_buttons:
             button1, button2 = self.row_buttons[index]
             button1.destroy()
@@ -174,7 +176,7 @@ class InputFrame(CTkFrame):
             return
         save_tracked_file(owner_name, repo_name, branch, path, location)
         table.table.add_row([str_to_link(owner_name, repo_name, branch, path), location], len(table.table.values))
-        table.add_buttons(len(table.table.values) - 1, owner_name, repo_name, branch, path, location)
+        table.add_buttons(len(table.table.values), owner_name, repo_name, branch, path, location)
 
         if location is NoneType or location_warning is None or location_warning is NoneType or location_warning.get():
             CTkMessagebox(title='Success',
@@ -287,9 +289,9 @@ class App(CTk):
         super().__init__()
 
         self.geometry(center_window(self, self._get_window_scaling()))
-        self.title("GitHub downloader")
+        self.title('GitHub downloader')
         # self.iconbitmap('installation/logo.ico')
-        customtkinter.set_appearance_mode("dark")
+        customtkinter.set_appearance_mode('dark')
 
         self.grid_rowconfigure(3, weight=1)
         self.grid_columnconfigure(0, weight=1)
