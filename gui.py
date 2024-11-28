@@ -53,11 +53,11 @@ class AppearanceFrame(CTkFrame):
         self.configure(fg_color='transparent')
 
     @staticmethod
-    def change_appearance_mode_event(new_appearance_mode: str):
+    def change_appearance_mode_event(new_appearance_mode: str) -> None:
         customtkinter.set_appearance_mode(new_appearance_mode)
 
     @staticmethod
-    def change_scaling_event(new_scaling: str):
+    def change_scaling_event(new_scaling: str) -> None:
         new_scaling_float = int(new_scaling.replace('%', '')) / 100
         customtkinter.set_widget_scaling(new_scaling_float)
 
@@ -68,9 +68,9 @@ class TableFrame(CTkScrollableFrame):
 
         self.row_buttons = {}
 
-        self.grid_columnconfigure(0, weight=1)
-        self.grid_columnconfigure(1, weight=1)
-        self.grid_columnconfigure(2, weight=1)
+        self.grid_columnconfigure(0, weight=0)
+        self.grid_columnconfigure(1, weight=0)
+        self.grid_columnconfigure(2, weight=0)
 
         self.delete_button_image = CTkImage(
             dark_image=Image.open('resources/delete_white.png'),
@@ -84,14 +84,13 @@ class TableFrame(CTkScrollableFrame):
         try:
             links = fabricate_links()
             self.table = CTkTable(master=self, row=len(links), column=2, values=links)
-            self.initialize_buttons(links)
-        except FileNotFoundError:
-            self.table = CTkTable(master=self, row=0, column=2, values=[])
+            # self.initialize_buttons(links)
+        except (FileNotFoundError, IndexError):
+            self.table = CTkTable(master=self, row=0, column=2, values=[[]])
         self.table.add_row(['Link', 'Stored'], 0)
+        self.table.delete_row(1)
 
-        self.table.grid(row=0, column=0, padx=10, pady=0, sticky='nsew', columnspan=5)
-
-        # self.grid_rowconfigure(0, weight=1)
+        self.table.grid(row=0, column=0, padx=10, pady=0, sticky='nsew')
 
     def initialize_buttons(self, links: list[list[str]]) -> None:
         for i, link in enumerate(links, start=1):
@@ -106,7 +105,7 @@ class TableFrame(CTkScrollableFrame):
             else:
                 temp[key] = val
 
-    def add_buttons(self, index: int, owner_name: str, repo_name: str, branch: str, path: str, location: str):
+    def add_buttons(self, index: int, owner_name: str, repo_name: str, branch: str, path: str, location: str) -> None:
         def wrap():
             try:
                 download_file(owner_name, repo_name, branch, path, location)
@@ -116,19 +115,19 @@ class TableFrame(CTkScrollableFrame):
         update_button = CTkButton(master=self,
                                   text="",
                                   image=self.update_button_image,
-                                  height=30,
-                                  width=30,
+                                  height=20,
+                                  width=20,
                                   command=lambda: wrap())
-        update_button.grid(row=index, column=1, padx=5, pady=5)
+        update_button.grid(row=index, column=1, padx=5, pady=0)
 
         delete_button = CTkButton(master=self,
                                   text="",
                                   image=self.delete_button_image,
-                                  height=30,
-                                  width=30,
+                                  height=20,
+                                  width=20,
                                   command=lambda: self.delete_buttons(index, owner_name, repo_name, branch, path,
                                                                       path.split('/')[-1]))
-        delete_button.grid(row=index, column=2, padx=5, pady=5)
+        delete_button.grid(row=index, column=2, padx=5, pady=0)
 
         self.row_buttons[index] = [update_button, delete_button]
 
@@ -173,10 +172,9 @@ class InputFrame(CTkFrame):
             owner_name, repo_name, branch, path, location, location_warning = self.ask_user_for_data()
         except TypeError:
             return
-
         save_tracked_file(owner_name, repo_name, branch, path, location)
         table.table.add_row([str_to_link(owner_name, repo_name, branch, path), location], len(table.table.values))
-        table.add_buttons(len(table.table.values), owner_name, repo_name, branch, path, location)
+        table.add_buttons(len(table.table.values) - 1, owner_name, repo_name, branch, path, location)
 
         if location is NoneType or location_warning is None or location_warning is NoneType or location_warning.get():
             CTkMessagebox(title='Success',
@@ -246,15 +244,14 @@ class InputFrame(CTkFrame):
             define_exception(e, self.master)
             return
 
-        table.table.delete_row(index + 1)
-        table.delete_buttons(index, owner_name, repo_name, branch, path, path.split('/')[-1])
-
         if index == -1:
             CTkMessagebox(master=self.master,
                           title='Error',
                           message=result,
                           icon='cancel')
         else:
+            table.table.delete_row(index + 1)
+            table.delete_buttons(index + 1, owner_name, repo_name, branch, path, path.split('/')[-1])
             CTkMessagebox(master=self.master,
                           title='Success',
                           message=result,
@@ -341,7 +338,7 @@ class App(CTk):
             except BadCredentialsException:
                 self.open_authentication()
 
-    def show_login(self):
+    def show_login(self) -> None:
         self.login.configure(state='normal')
         self.login.insert("0.0", f'Logged in as {gv.git.get_user().login}')
         self.login.configure(state='disabled')
