@@ -6,6 +6,10 @@ This project might be useful for people who want to have the most recent version
 For instance, I wanted to create an app for reading memory,
 and I wasn't bothered manually updating a file with the addresses when the new update is out.
 
+## GUI application
+There is an alternative GUI version of the aforementioned console application which works perfectly, except the part with buttons "update" and "delete".
+Due to lack of a good library, I was unable to render these buttons directly in the cells of the table. Therefore I wouldn't recommend to use it.
+
 ## This is how the main menu looks like:
 ![image](https://github.com/user-attachments/assets/530fe2a8-8c47-48e7-850f-91916db1e96c)
 
