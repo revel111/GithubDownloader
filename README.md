@@ -47,10 +47,7 @@ Uninstallation deletes script from the startup.\
 **This app was tested on Windows 10 and Lubuntu 24.04.**
 
 ## Plans for improvement:
-  - GUI;
-  - Possibility of custom frequency of file updating;
-  - Possibility of tracking directory;
-  - Manage duplicated files;
+The project is considered to be finished.
     
 ## Where to report problems and suggestions?
 You can create an issue [here](https://github.com/revel111/GithubDownloader/issues).
