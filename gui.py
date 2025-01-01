@@ -359,7 +359,7 @@ class App(CTk):
             except BadCredentialsException:
                 message = CTkMessagebox(title='Error',
                                         message='You entered invalid secure token.',
-                                        icon='Cancel')
+                                        icon='cancel')
 
                 if message is NoneType or message.get():
                     self.open_authentication()
