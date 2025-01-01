@@ -34,7 +34,11 @@ You can find them in the "downloaded" directory which is located in the director
 
 ## External libraries used:
 [PyGithub](https://pypi.org/project/PyGithub)\
-[tabulate](https://pypi.org/project/tabulate)
+[tabulate](https://pypi.org/project/tabulate)\
+[customtkinter](https://pypi.org/project/customtkinter/)\
+[CTkMenuBar](https://pypi.org/project/CTkMenuBar/)\
+[CTkMessagebox](https://pypi.org/project/CTkMessagebox/)\
+[CTkTable](https://pypi.org/project/CTkTable/)
 
 ## How to install and uninstall?
 In the "installation" directory you can find two scripts: for Windows and for Linux respectively.
