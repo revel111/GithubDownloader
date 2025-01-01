@@ -8,7 +8,7 @@ and I wasn't bothered manually updating a file with the addresses when the new u
 
 ## GUI application
 There is an alternative GUI version of the aforementioned console application which works perfectly, except the part with buttons "update" and "delete".
-Due to lack of a good library, I was unable to render these buttons directly in the cells of the table. Therefore I wouldn't recommend to use it.
+Due to lack of a good library, I was unable to render these buttons directly in the cells of the table. **Therefore I wouldn't recommend to use it.**
 
 ## This is how the main menu looks like:
 ![image](https://github.com/user-attachments/assets/530fe2a8-8c47-48e7-850f-91916db1e96c)
@@ -16,7 +16,7 @@ Due to lack of a good library, I was unable to render these buttons directly in 
 ## Why does this app ask for GitHub authentication token and is it dangerous?
 **This app stores your token locally so your token won't be exposed to anyone.
 You can browse code and figure it out yourself.
-Your token is saved in "data/credentials.txt" which is located in the directory with scripts.**\
+Your token is saved in "data/credentials.env" which is located in the directory with scripts.**\
 GitHub has restricted number of requests per hour, and for an unauthorized user this amount is quite low,
 therefore, the authentication is needed.
 
@@ -24,11 +24,12 @@ therefore, the authentication is needed.
 GitHub link should look like this: "https://github.com/revel111/GithubDownloader/blob/master/main.py".
 
 ## Where can I find downloaded files?
-You can find them in the "downloaded" directory which is located in the directory with scripts or in directory which you specified.
+You can find them in the "downloaded" directory which is located in the directory with scripts or in a directory which you specified.
 
 ## How to use this application?
-**In the repository you can find two scripts:**
+**In the repository you can find three scripts:**
   - main.py - is used for configuring your tracked files and authentication process.
+  - gui.py - is the GUI version of the console applicaiton.
   - auto_updater.py - is used for running on the background and once per 15 minutes try to update tracked files if a new version is out.
 
 ## External libraries used:
